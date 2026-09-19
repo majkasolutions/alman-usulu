@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Alman Usulü</title>
+<meta name="theme-color" content="#0f172a">
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#fff; --ink:#0f172a; --muted:#64748b; --line:#e5e7eb;
+    --accent:#2563eb; --accent-ink:#fff; --pos:#15803d; --pos-bg:#ecfdf5; --neg:#b91c1c; --neg-bg:#fef2f2;
+    --radius:14px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0b1220; --card:#131c2e; --ink:#e5e7eb; --muted:#94a3b8; --line:#243044;
+           --accent:#3b82f6; --pos:#4ade80; --pos-bg:#0f2a1c; --neg:#f87171; --neg-bg:#2c1214; }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  main{max-width:560px;margin:0 auto;padding:16px 16px calc(32px + env(safe-area-inset-bottom))}
+  h1{font-size:22px;margin:8px 0 4px;letter-spacing:-.01em}
+  h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:24px 0 10px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px}
+  .row{display:flex;gap:10px;align-items:center}
+  .grow{flex:1}
+  .muted{color:var(--muted);font-size:14px}
+  label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+  input,select,button{font:inherit}
+  input[type=text],input[type=email],input[type=password],input[type=number],input[type=date],select{
+    width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+  input:focus,select:focus{outline:2px solid var(--accent);outline-offset:0;border-color:transparent}
+  button{padding:11px 16px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+  button.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent;font-weight:600;width:100%;margin-top:14px}
+  button.small{padding:6px 10px;font-size:13px}
+  button.danger{color:var(--neg)}
+  button:disabled{opacity:.5;cursor:default}
+  .tabs{display:flex;background:var(--bg);border-radius:10px;padding:4px;gap:4px}
+  .tabs button{flex:1;border:0;background:transparent;color:var(--muted);font-weight:600;padding:8px}
+  .tabs button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border:1px solid var(--line);border-radius:999px;cursor:pointer;user-select:none;font-size:14px}
+  .chip input{display:none}
+  .chip.on{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+  .bal{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .bal .card{padding:12px}
+  .bal .name{font-weight:600}
+  .bal .amt{font-size:20px;font-weight:700;letter-spacing:-.02em;margin-top:2px}
+  .pos{color:var(--pos)} .neg{color:var(--neg)}
+  .settle{display:flex;flex-direction:column;gap:8px}
+  .settle .card{padding:10px 14px;display:flex;justify-content:space-between;align-items:center}
+  .settle b{font-weight:600}
+  .list{display:flex;flex-direction:column;gap:8px}
+  .exp{display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:center;padding:12px 14px}
+  .exp .date{font-size:12px;color:var(--muted);text-align:center;line-height:1.2}
+  .exp .date b{display:block;font-size:17px;color:var(--ink)}
+  .exp .desc{font-weight:600}
+  .exp .sub{font-size:13px;color:var(--muted)}
+  .exp .amt{font-weight:700;text-align:right;white-space:nowrap}
+  .exp .amt .mine{display:block;font-size:12px;font-weight:500;color:var(--muted)}
+  .exp.payment .desc::before{content:"↔ ";color:var(--muted)}
+  .exp .actions{grid-column:1 / -1;display:flex;gap:8px;justify-content:flex-end}
+  .err{color:var(--neg);font-size:14px;margin-top:10px;min-height:1em}
+  .empty{color:var(--muted);text-align:center;padding:24px 0}
+  .hidden{display:none !important}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none}
+  .toast.show{opacity:1}
+</style>
+</head>
+<body>
+<main>
+  <!-- Giriş -->
+  <section id="login">
+    <h1>Alman Usulü</h1>
+    <p class="muted">Kim ne ödedi, kim kime borçlu — arkadaş defteri.</p>
+    <form class="card" id="loginForm" autocomplete="on">
+      <label for="email">E-posta</label>
+      <input id="email" type="email" inputmode="email" autocapitalize="off" required placeholder="ad@gmail.com">
+      <label for="pass">Şifre</label>
+      <input id="pass" type="password" required>
+      <button class="primary" type="submit">Giriş</button>
+      <div class="err" id="loginErr"></div>
+    </form>
+  </section>
+
+  <!-- Uygulama -->
+  <section id="app" class="hidden">
+    <div class="row">
+      <div class="grow">
+        <h1>Alman Usulü</h1>
+        <div class="muted" id="who"></div>
+      </div>
+      <button class="small" id="refreshBtn" title="Yenile">↻</button>
+      <button class="small" id="logoutBtn">Çıkış</button>
+    </div>
+
+    <h2>Durum</h2>
+    <div class="bal" id="balances"></div>
+
+    <h2>Kim kime ne verecek</h2>
+    <div class="settle" id="settle"></div>
+
+    <h2>Yeni kayıt</h2>
+    <form class="card" id="expForm">
+      <div class="tabs">
+        <button type="button" data-kind="expense" class="on">Harcama</button>
+        <button type="button" data-kind="payment">Borç ödemesi</button>
+      </div>
+      <label for="desc">Açıklama</label>
+      <input id="desc" type="text" maxlength="120" required placeholder="Akşam yemeği, market, benzin…">
+      <div class="row">
+        <div class="grow">
+          <label for="amount">Tutar (₺)</label>
+          <input id="amount" type="number" inputmode="decimal" step="0.01" min="0.01" required placeholder="0,00">
+        </div>
+        <div class="grow">
+          <label for="date">Tarih</label>
+          <input id="date" type="date" required>
+        </div>
+      </div>
+      <label for="payer" id="payerLabel">Kim ödedi?</label>
+      <select id="payer"></select>
+      <div id="splitBox">
+        <label>Kimler için? <span class="muted" id="splitHint"></span></label>
+        <div class="chips" id="split"></div>
+      </div>
+      <div id="toBox" class="hidden">
+        <label for="to">Kime ödendi?</label>
+        <select id="to"></select>
+      </div>
+      <button class="primary" type="submit" id="saveBtn">Kaydet</button>
+      <div class="err" id="expErr"></div>
+    </form>
+
+    <h2>Kayıtlar <span class="muted" id="count"></span></h2>
+    <div class="list" id="list"></div>
+  </section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+// Supabase (majka-panel projesi). Yayınlanabilir anahtar; koruma sunucudaki
+// hesap_* fonksiyonlarında (her çağrı e-posta+şifre doğrular).
+const SUPABASE_URL = "https://hixlepniydwuqxenjgrj.supabase.co";
+const SUPABASE_KEY = "sb_publishable_nxAwPpSdPHZMkeL0B90bug_xUcXlt8b";
+const SESSION_KEY = "alman-usulu:session";
+
+const $ = (s) => document.querySelector(s);
+const fmt = new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" });
+const money = (n) => fmt.format(n);
+const AY = ["Oca","Şub","Mar","Nis","May","Haz","Tem","Ağu","Eyl","Eki","Kas","Ara"];
+
+let session = null;   // {email, pass}
+let data = null;      // {me, users, expenses}
+let kind = "expense";
+let pendingDelete = null;
+
+async function rpc(fn, args) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+    body: JSON.stringify(args),
+  });
+  const body = await r.json().catch(() => null);
+  if (!r.ok) throw new Error(body?.message || body?.hint || `Hata (${r.status})`);
+  return body;
+}
+
+function toast(msg) {
+  const t = $("#toast"); t.textContent = msg; t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 1800);
+}
+
+// ---------------------------------------------------------------- oturum
+function loadSession() {
+  try { session = JSON.parse(localStorage.getItem(SESSION_KEY)); } catch { session = null; }
+}
+function saveSession() {
+  try { session ? localStorage.setItem(SESSION_KEY, JSON.stringify(session)) : localStorage.removeItem(SESSION_KEY); } catch {}
+}
+
+$("#loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  $("#loginErr").textContent = "";
+  const btn = e.target.querySelector("button"); btn.disabled = true;
+  try {
+    session = { email: $("#email").value.trim().toLowerCase(), pass: $("#pass").value };
+    await refresh();
+    saveSession();
+    show("app");
+  } catch (err) {
+    session = null;
+    $("#loginErr").textContent = err.message;
+  } finally { btn.disabled = false; }
+});
+
+$("#logoutBtn").addEventListener("click", () => {
+  session = null; data = null; saveSession();
+  $("#pass").value = "";
+  show("login");
+});
+$("#refreshBtn").addEventListener("click", () => refresh().then(render).catch(e => toast(e.message)));
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && session) refresh().then(render).catch(() => {});
+});
+
+function show(id) {
+  $("#login").classList.toggle("hidden", id !== "login");
+  $("#app").classList.toggle("hidden", id !== "app");
+}
+
+async function refresh() {
+  data = await rpc("hesap_get", { p_email: session.email, p_pass: session.pass });
+  render();
+}
+
+// ---------------------------------------------------------------- hesap
+const name = (email) => data.users.find(u => u.email === email)?.name || email;
+
+function balances() {
+  // kuruş cinsinden tam sayı; + alacaklı, − borçlu
+  const b = Object.fromEntries(data.users.map(u => [u.email, 0]));
+  for (const e of data.expenses) {
+    const total = Math.round(Number(e.amount) * 100);
+    b[e.payer] += total;
+    const n = e.split.length, base = Math.floor(total / n);
+    let rest = total - base * n;
+    for (const s of e.split) { b[s] -= base + (rest > 0 ? 1 : 0); if (rest > 0) rest--; }
+  }
+  return b;
+}
+
+function settlements(b) {
+  const debt = Object.entries(b).filter(([, v]) => v < 0).map(([k, v]) => [k, -v]).sort((a, c) => c[1] - a[1]);
+  const cred = Object.entries(b).filter(([, v]) => v > 0).sort((a, c) => c[1] - a[1]);
+  const out = [];
+  let i = 0, j = 0;
+  while (i < debt.length && j < cred.length) {
+    const x = Math.min(debt[i][1], cred[j][1]);
+    if (x > 0) out.push({ from: debt[i][0], to: cred[j][0], amount: x });
+    debt[i][1] -= x; cred[j][1] -= x;
+    if (debt[i][1] === 0) i++;
+    if (cred[j][1] === 0) j++;
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------- çizim
+function render() {
+  if (!data) return;
+  $("#who").textContent = `${name(data.me)} olarak giriş yapıldı`;
+
+  const b = balances();
+  $("#balances").innerHTML = data.users.map(u => {
+    const v = b[u.email] / 100;
+    const cls = v > 0 ? "pos" : v < 0 ? "neg" : "";
+    const txt = v > 0 ? "alacaklı" : v < 0 ? "borçlu" : "ödeşmiş";
+    return `<div class="card"><div class="name">${esc(u.name)}${u.email === data.me ? ' <span class="muted">(sen)</span>' : ""}</div>
+      <div class="amt ${cls}">${money(Math.abs(v))}</div><div class="muted">${txt}</div></div>`;
+  }).join("");
+
+  const s = settlements(b);
+  $("#settle").innerHTML = s.length
+    ? s.map(t => `<div class="card"><span><b>${esc(name(t.from))}</b> → <b>${esc(name(t.to))}</b></span><b>${money(t.amount / 100)}</b></div>`).join("")
+    : `<div class="empty">Herkes ödeşmiş 🎉</div>`;
+
+  // form seçenekleri
+  const opts = data.users.map(u => `<option value="${u.email}">${esc(u.name)}</option>`).join("");
+  if (!$("#payer").options.length) {
+    $("#payer").innerHTML = opts; $("#payer").value = data.me;
+    $("#to").innerHTML = opts;
+    $("#split").innerHTML = data.users.map(u =>
+      `<label class="chip on"><input type="checkbox" value="${u.email}" checked>${esc(u.name)}</label>`).join("");
+    $("#date").value = new Date().toISOString().slice(0, 10);
+    syncTo();
+  }
+  updateSplitHint();
+
+  // liste
+  $("#count").textContent = data.expenses.length ? `(${data.expenses.length})` : "";
+  $("#list").innerHTML = data.expenses.length ? data.expenses.map(e => {
+    const d = new Date(e.spent_on + "T00:00:00");
+    const amt = Number(e.amount);
+    const per = amt / e.split.length;
+    const inSplit = e.split.includes(data.me);
+    let mine = "";
+    if (e.kind === "payment") {
+      mine = e.payer === data.me ? "sen ödedin" : e.split[0] === data.me ? "sana ödendi" : "";
+    } else if (e.payer === data.me) {
+      mine = `senin alacağın ${money(amt - (inSplit ? per : 0))}`;
+    } else if (inSplit) {
+      mine = `senin payın ${money(per)}`;
+    }
+    const sub = e.kind === "payment"
+      ? `${esc(name(e.payer))} → ${esc(name(e.split[0]))}`
+      : `${esc(name(e.payer))} ödedi · ${e.split.length === data.users.length ? "herkes" : e.split.map(name).map(esc).join(", ")}`;
+    const del = pendingDelete === e.id
+      ? `<div class="actions"><span class="muted">Silinsin mi?</span><button type="button" class="small" data-cancel>Vazgeç</button><button type="button" class="small danger" data-confirm="${e.id}">Evet, sil</button></div>`
+      : `<div class="actions"><button type="button" class="small" data-del="${e.id}">Sil</button></div>`;
+    return `<div class="card exp ${e.kind}">
+      <div class="date"><b>${d.getDate()}</b>${AY[d.getMonth()]}</div>
+      <div><div class="desc">${esc(e.description)}</div><div class="sub">${sub}</div></div>
+      <div class="amt">${money(amt)}<span class="mine">${mine}</span></div>
+      ${del}</div>`;
+  }).join("") : `<div class="empty">Henüz kayıt yok. İlk harcamayı ekle.</div>`;
+}
+
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+
+function selectedSplit() { return [...$("#split").querySelectorAll("input:checked")].map(i => i.value); }
+function updateSplitHint() {
+  const n = selectedSplit().length, a = Number($("#amount").value);
+  $("#splitHint").textContent = n && a > 0 ? `· kişi başı ${money(a / n)}` : "";
+}
+function syncTo() {
+  // ödemede alıcı, ödeyenin kendisi olamaz
+  const payer = $("#payer").value;
+  [...$("#to").options].forEach(o => { o.disabled = o.value === payer; });
+  if ($("#to").value === payer) $("#to").value = data.users.find(u => u.email !== payer)?.email || "";
+}
+
+// ---------------------------------------------------------------- form
+document.querySelectorAll(".tabs button").forEach(btn => btn.addEventListener("click", () => {
+  kind = btn.dataset.kind;
+  document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("on", b === btn));
+  const pay = kind === "payment";
+  $("#splitBox").classList.toggle("hidden", pay);
+  $("#toBox").classList.toggle("hidden", !pay);
+  $("#desc").placeholder = pay ? "Borç ödemesi" : "Akşam yemeği, market, benzin…";
+  $("#desc").required = !pay;
+  $("#saveBtn").textContent = pay ? "Ödemeyi kaydet" : "Kaydet";
+}));
+$("#split").addEventListener("change", (e) => {
+  e.target.closest(".chip").classList.toggle("on", e.target.checked);
+  updateSplitHint();
+});
+$("#amount").addEventListener("input", updateSplitHint);
+$("#payer").addEventListener("change", syncTo);
+
+$("#expForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  $("#expErr").textContent = "";
+  const payer = $("#payer").value;
+  const split = kind === "payment" ? [$("#to").value] : selectedSplit();
+  if (!split.length) { $("#expErr").textContent = "En az bir kişi seç."; return; }
+  const btn = $("#saveBtn"); btn.disabled = true;
+  try {
+    await rpc("hesap_add_expense", {
+      p_email: session.email, p_pass: session.pass,
+      p_kind: kind, p_payer: payer,
+      p_amount: Number($("#amount").value),
+      p_description: $("#desc").value.trim() || "Borç ödemesi",
+      p_spent_on: $("#date").value,
+      p_split: split,
+    });
+    $("#desc").value = ""; $("#amount").value = "";
+    toast("Kaydedildi");
+    await refresh();
+  } catch (err) { $("#expErr").textContent = err.message; }
+  finally { btn.disabled = false; }
+});
+
+$("#list").addEventListener("click", async (e) => {
+  const t = e.target.closest("button"); if (!t) return;
+  if (t.dataset.del) { pendingDelete = t.dataset.del; render(); return; }
+  if (t.hasAttribute("data-cancel")) { pendingDelete = null; render(); return; }
+  if (t.dataset.confirm) {
+    t.disabled = true;
+    try {
+      await rpc("hesap_delete_expense", { p_email: session.email, p_pass: session.pass, p_expense: t.dataset.confirm });
+      pendingDelete = null; toast("Silindi"); await refresh();
+    } catch (err) { toast(err.message); t.disabled = false; }
+  }
+});
+
+// ---------------------------------------------------------------- başlat
+loadSession();
+if (session) {
+  refresh().then(() => show("app")).catch(() => { session = null; saveSession(); show("login"); });
+} else show("login");
+</script>
+</body>
+</html>
