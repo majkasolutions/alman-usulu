@@ -44,6 +44,12 @@
   input[type=text],input[type=email],input[type=password],input[type=number],input[type=date],select{
     width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
   input:focus,select:focus{outline:2px solid var(--accent);outline-offset:0;border-color:transparent}
+  /* iOS: tarih alanı diğer alanlarla aynı yükseklik ve hizada olsun */
+  input[type=text],input[type=email],input[type=password],input[type=number],input[type=date],select{height:46px;-webkit-appearance:none;appearance:none}
+  input[type=date]{display:block;min-width:0;text-align:left}
+  input[type=date]::-webkit-date-and-time-value{text-align:left;height:100%;display:flex;align-items:center}
+  .row.fields{align-items:flex-start}
+  .row.fields label{margin-top:10px}
   button{padding:11px 16px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
   button.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent;font-weight:600;width:100%;margin-top:14px}
   button.small{padding:6px 10px;font-size:13px}
@@ -94,6 +100,37 @@
   .members{display:flex;flex-direction:column;gap:6px}
   .members .row{padding:6px 0;border-bottom:1px solid var(--line)}
   .members .row:last-child{border:0}
+  /* yarış pisti */
+  .race{padding:12px 14px 10px;overflow:hidden}
+  .race .head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+  .race .head b{font-size:15px}
+  .lane{display:grid;grid-template-columns:76px 1fr 84px;gap:8px;align-items:center;padding:5px 0}
+  .lane .lname{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .lane .lamt{font-size:13px;text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+  .lane.leader .lname,.lane.leader .lamt{font-weight:700;color:var(--ink)}
+  .track{position:relative;height:34px;border-bottom:2px dashed var(--line)}
+  .track::after{content:"🏁";position:absolute;right:-4px;bottom:2px;font-size:16px;opacity:.55}
+  .piece{position:absolute;bottom:2px;left:0;font-size:24px;line-height:1;transition:left .9s cubic-bezier(.2,.8,.2,1);filter:drop-shadow(0 2px 2px rgba(0,0,0,.25))}
+  .lane.leader .piece::after{content:"👑";position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:13px}
+  .lane.me .lname::after{content:" ·";color:var(--accent)}
+  .tokens{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-top:8px}
+  .tokens button{padding:6px 0;font-size:22px;line-height:1.2;border-radius:10px}
+  .tokens button.on{background:var(--accent);border-color:transparent}
+  .tokens button:disabled{opacity:.25}
+  .tokenCard{display:flex;align-items:center;gap:12px}
+  .tokenCard .big{font-size:34px;line-height:1}
+  .tokenCard.pick{border-color:var(--accent)}
+  .modal{position:fixed;inset:0;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10}
+  .modal .card{width:100%;max-width:420px;padding:20px}
+  .modal h3{margin:0 0 4px;font-size:20px}
+  .modal .tokens{grid-template-columns:repeat(4,1fr);gap:8px}
+  .modal .tokens button{font-size:30px;padding:10px 0}
+  .iban{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;letter-spacing:.02em;word-break:break-all}
+  .settle .card{flex-wrap:wrap}
+  .settle .pay{flex-basis:100%;display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px;padding-top:6px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+  .confetti{position:fixed;inset:0;pointer-events:none;z-index:8;overflow:hidden}
+  .confetti span{position:absolute;top:-10%;font-size:22px;animation:fall 1.8s ease-in forwards}
+  @keyframes fall{to{transform:translateY(120vh) rotate(540deg);opacity:.2}}
 </style>
 </head>
 <body>
@@ -122,8 +159,31 @@
       <button class="small" id="logoutBtn">Çıkış</button>
     </div>
 
+    <h2>Piyonun</h2>
+    <div class="card" id="tokenCard">
+      <div class="tokenCard"><span class="big" id="myToken">❔</span>
+        <div class="grow"><div id="tokenText">Yarış pistindeki amblemin</div><div class="muted">Etkinliklerde ödediğin toplamla ilerler.</div></div>
+        <button type="button" class="small" id="tokenToggle">Seç</button></div>
+      <div class="tokens hidden" id="tokenGrid"></div>
+      <div class="err" id="tokenErr"></div>
+    </div>
+
     <h2>Etkinlikler</h2>
     <div class="list" id="events"></div>
+
+    <h2>Ödeme bilgilerim <span class="muted">isteğe bağlı</span></h2>
+    <form class="card" id="bankForm">
+      <div class="muted">IBAN girersen arkadaşların ödeşirken görür. IBAN için ad soyad zorunlu.</div>
+      <label for="fullName">Ad Soyad</label>
+      <input id="fullName" type="text" maxlength="80" autocomplete="name" placeholder="Hesap sahibinin adı">
+      <label for="ibanIn">IBAN</label>
+      <input id="ibanIn" type="text" maxlength="40" autocomplete="off" autocapitalize="characters" placeholder="TR00 0000 0000 0000 0000 0000 00">
+      <button class="primary" type="submit">Kaydet</button>
+      <div class="err" id="bankErr"></div>
+    </form>
+
+    <h2>IBAN'lar</h2>
+    <div class="list" id="ibans"></div>
 
     <h2>Yeni etkinlik</h2>
     <form class="card" id="newEventForm">
@@ -150,6 +210,9 @@
       <button class="small" id="refreshBtn" title="Yenile">↻</button>
     </div>
 
+    <h2>Yarış <span class="muted" id="raceSub">ödediği toplam</span></h2>
+    <div class="card race" id="race"></div>
+
     <h2>Durum</h2>
     <div class="bal" id="balances"></div>
 
@@ -164,7 +227,7 @@
       </div>
       <label for="desc">Açıklama</label>
       <input id="desc" type="text" maxlength="120" required placeholder="Akşam yemeği, market, benzin…">
-      <div class="row">
+      <div class="row fields">
         <div class="grow"><label for="amount">Tutar (₺)</label>
           <input id="amount" type="number" inputmode="decimal" step="0.01" min="0.01" required placeholder="0,00"></div>
         <div class="grow"><label for="date">Tarih</label><input id="date" type="date" required></div>
@@ -224,6 +287,15 @@
     </div>
   </section>
 </main>
+<div class="modal hidden" id="tokenModal">
+  <div class="card">
+    <h3>Piyonunu seç</h3>
+    <div class="muted">Yarış pistinde seni temsil edecek. Sonra değiştirebilirsin.</div>
+    <div class="tokens" id="modalTokens"></div>
+    <div class="err" id="modalErr"></div>
+    <div class="row" style="justify-content:flex-end;margin-top:10px"><button type="button" class="link" id="modalLater">Sonra</button></div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -233,6 +305,7 @@ const SUPABASE_URL = "https://hixlepniydwuqxenjgrj.supabase.co";
 const SUPABASE_KEY = "sb_publishable_nxAwPpSdPHZMkeL0B90bug_xUcXlt8b";
 const SESSION_KEY = "alman-usulu:session";
 const MAX_P = 10;
+const TOKENS = ["🎩","🚗","🐕","🚢","👢","🐈","🦖","🛵","🍕","🎸","🚀","🐧","⛵","🧸","🎲","🏎️"];
 
 const $ = (s) => document.querySelector(s);
 const fmt = new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" });
@@ -318,7 +391,72 @@ function renderHome() {
       `<label class="chip on"><input type="checkbox" value="${u.email}" checked>${esc(u.name)}</label>`).join("");
   }
   renderNewGuests();
+  renderTokenCard();
+  renderBank();
+  maybeTokenModal();
 }
+function renderTokenCard() {
+  const me = base.users.find(u => u.email === base.me);
+  const has = !!me?.token;
+  $("#myToken").textContent = has ? me.token : "❔";
+  $("#tokenText").textContent = has ? "Yarış pistindeki amblemin" : "Piyonunu seç!";
+  $("#tokenCard").classList.toggle("pick", !has);
+  $("#tokenToggle").textContent = has ? "Değiştir" : "Seç";
+  if (!has) $("#tokenGrid").classList.remove("hidden");
+  const taken = Object.fromEntries(base.users.filter(u => u.token && u.email !== base.me).map(u => [u.token, u.name]));
+  $("#tokenGrid").innerHTML = TOKENS.map(t => `<button type="button" data-token="${t}" class="${me?.token === t ? "on" : ""}" ${taken[t] ? `disabled title="${esc(taken[t])} aldı"` : ""}>${t}</button>`).join("");
+}
+$("#tokenToggle").addEventListener("click", () => $("#tokenGrid").classList.toggle("hidden"));
+// piyonu olmayana açılışta pencere (oturum başına bir kez ertelenebilir)
+function maybeTokenModal() {
+  const me = base?.users.find(u => u.email === base.me);
+  let later = false; try { later = sessionStorage.getItem("alman-usulu:token-later") === "1"; } catch {}
+  if (!me || me.token || later) { $("#tokenModal").classList.add("hidden"); return; }
+  const taken = Object.fromEntries(base.users.filter(u => u.token && u.email !== base.me).map(u => [u.token, u.name]));
+  $("#modalTokens").innerHTML = TOKENS.map(t => `<button type="button" data-token="${t}" ${taken[t] ? `disabled title="${esc(taken[t])} aldı"` : ""}>${t}</button>`).join("");
+  $("#tokenModal").classList.remove("hidden");
+}
+$("#modalLater").addEventListener("click", () => { try { sessionStorage.setItem("alman-usulu:token-later", "1"); } catch {} $("#tokenModal").classList.add("hidden"); });
+$("#modalTokens").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-token]"); if (!b) return;
+  $("#modalErr").textContent = "";
+  try {
+    await rpc("hesap_set_token", { p_token: b.dataset.token });
+    await loadHome(); $("#tokenModal").classList.add("hidden"); toast(`Piyonun ${b.dataset.token}`);
+    if (ev?.participants) renderEvent(); else renderHome();
+  } catch (err) { $("#modalErr").textContent = err.message; }
+});
+const fmtIban = (i) => (i || "").replace(/(.{4})/g, "$1 ").trim();
+function renderBank() {
+  const me = base.users.find(u => u.email === base.me);
+  if (document.activeElement !== $("#fullName") && document.activeElement !== $("#ibanIn")) {
+    $("#fullName").value = me?.full_name || ""; $("#ibanIn").value = fmtIban(me?.iban);
+  }
+  const list = base.users.filter(u => u.iban);
+  $("#ibans").innerHTML = list.length ? list.map(u => `<div class="card row"><div class="grow"><div><b>${esc(u.name)}</b> <span class="muted">${esc(u.full_name || "")}</span></div><div class="iban">${fmtIban(u.iban)}</div></div>
+    <button type="button" class="small" data-copy="${u.iban}">Kopyala</button></div>`).join("")
+    : `<div class="empty">Henüz kimse IBAN girmedi.</div>`;
+}
+$("#bankForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); $("#bankErr").textContent = "";
+  const fn = $("#fullName").value.trim(), ib = $("#ibanIn").value.replace(/\s/g, "").toUpperCase();
+  if (ib && !/\S+\s+\S+/.test(fn)) { $("#bankErr").textContent = "IBAN girerken ad soyad zorunlu."; return; }
+  const btn = e.target.querySelector("button.primary"); btn.disabled = true;
+  try { await rpc("hesap_set_bank", { p_full_name: fn, p_iban: ib }); await loadHome(); renderBank(); toast(ib ? "IBAN kaydedildi" : "Kaydedildi"); }
+  catch (err) { $("#bankErr").textContent = err.message; } finally { btn.disabled = false; }
+});
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-copy]"); if (!b) return;
+  try { await navigator.clipboard.writeText(b.dataset.copy); toast("IBAN kopyalandı"); } catch { toast(b.dataset.copy); }
+});
+$("#tokenGrid").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-token]"); if (!b) return;
+  $("#tokenErr").textContent = "";
+  try {
+    await rpc("hesap_set_token", { p_token: b.dataset.token });
+    await loadHome(); renderTokenCard(); $("#tokenGrid").classList.add("hidden"); toast(`Piyonun ${b.dataset.token}`);
+  } catch (err) { $("#tokenErr").textContent = err.message; }
+});
 $("#events").addEventListener("click", (e) => { const c = e.target.closest("[data-open]"); if (c) location.hash = "#e/" + c.dataset.open; });
 $("#newUsers").addEventListener("change", (e) => { e.target.closest(".chip").classList.toggle("on", e.target.checked); renderNewGuests(); });
 function newParticipants() {
@@ -361,12 +499,60 @@ async function openEvent(id) {
   resetForm();
   renderEvent();
   show("event");
+  maybeTokenModal();
   window.scrollTo(0, 0);
 }
-async function loadEvent() { const d = await rpc("hesap_event", { p_event: ev.id }); ev = d; }
+async function loadEvent() { const d = await rpc("hesap_event", { p_event: ev.id }); ev = d; if (base && d.users) base.users = d.users; }
 const P = (id) => ev.participants.find(p => p.id === id);
 const pname = (id) => P(id)?.name || "?";
 const meP = () => ev.participants.find(p => p.email === ev.me);
+const hash = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+function tokenMap() {
+  // hesabı olan → kendi piyonu; misafir/piyonsuz → boşta kalanlardan sabit (id'ye göre) bir tane
+  const users = ev.users || base?.users || [];
+  const used = new Set(users.filter(u => u.token).map(u => u.token));
+  const m = {};
+  for (const p of ev.participants) {
+    const t = p.email ? users.find(u => u.email === p.email)?.token : null;
+    if (t) { m[p.id] = t; continue; }
+    let i = hash(p.id) % TOKENS.length, k = 0;
+    while (used.has(TOKENS[i]) && k < TOKENS.length) { i = (i + 1) % TOKENS.length; k++; }
+    m[p.id] = TOKENS[i]; used.add(TOKENS[i]);
+  }
+  return m;
+}
+function paidTotals() {
+  const t = Object.fromEntries(ev.participants.map(p => [p.id, 0]));
+  for (const e of ev.expenses) if (e.kind === "expense") t[e.payer] = (t[e.payer] || 0) + Math.round(Number(e.amount) * 100);
+  return t;
+}
+function renderRace() {
+  const paid = paidTotals(), tok = tokenMap(), me = meP();
+  const max = Math.max(0, ...Object.values(paid));
+  const order = [...ev.participants].sort((a, b) => paid[b.id] - paid[a.id]);
+  const leader = max > 0 ? order[0] : null;
+  const total = Object.values(paid).reduce((s, v) => s + v, 0);
+  $("#race").innerHTML = `<div class="head"><b>${leader ? `${tok[leader.id]} ${esc(leader.name)} önde` : "Henüz kimse yola çıkmadı"}</b>
+      <span class="muted">${total ? "toplam " + money(total / 100) : ""}</span></div>` +
+    order.map((p, i) => {
+      const pct = max ? paid[p.id] / max * 100 : 0;
+      return `<div class="lane ${i === 0 && max > 0 ? "leader" : ""} ${p.id === me?.id ? "me" : ""}">
+        <span class="lname">${esc(p.name)}</span>
+        <div class="track"><span class="piece" style="left:calc(${pct.toFixed(1)}% - ${(pct / 100 * 26).toFixed(1)}px)">${tok[p.id]}</span></div>
+        <span class="lamt">${money(paid[p.id] / 100)}</span></div>`;
+    }).join("");
+  // lider değiştiyse konfeti
+  const key = "alman-usulu:leader:" + ev.id;
+  let prev = null; try { prev = localStorage.getItem(key); } catch {}
+  if (leader && prev && prev !== leader.id) confetti();
+  try { if (leader) localStorage.setItem(key, leader.id); } catch {}
+}
+function confetti() {
+  const c = document.createElement("div"); c.className = "confetti";
+  const bits = ["🎉", "✨", "🎊", "⭐", "🥳"];
+  c.innerHTML = Array.from({ length: 24 }, (_, i) => `<span style="left:${Math.random() * 100}%;animation-delay:${Math.random() * .6}s">${bits[i % bits.length]}</span>`).join("");
+  document.body.appendChild(c); setTimeout(() => c.remove(), 2600);
+}
 
 function balances() {
   // kuruş cinsinden; + alacaklı, − borçlu
@@ -395,7 +581,11 @@ function renderEvent() {
   if (!ev || !ev.participants) return;
   const me = meP();
   $("#evTitle").textContent = ev.name;
-  $("#evSub").textContent = `${ev.participants.length} kişi · ${uname(ev.me)} olarak`;
+  const total = ev.expenses.filter(e => e.kind === "expense").reduce((s, e) => s + Math.round(Number(e.amount) * 100), 0);
+  $("#evSub").textContent = total
+    ? `Toplam ${money(total / 100)} · kişi başı ${money(total / ev.participants.length / 100)} · ${ev.participants.length} kişi`
+    : `${ev.participants.length} kişi · henüz harcama yok`;
+  renderRace();
 
   const b = balances();
   $("#balances").innerHTML = ev.participants.map(p => {
@@ -408,7 +598,10 @@ function renderEvent() {
 
   const s = settlements(b);
   $("#settle").innerHTML = s.length
-    ? s.map(t => `<div class="card"><span><b>${esc(pname(t.from))}</b> → <b>${esc(pname(t.to))}</b></span><b>${money(t.amount / 100)}</b></div>`).join("")
+    ? s.map(t => {
+        const u = (ev.users || []).find(x => x.email && x.email === P(t.to)?.email);
+        const pay = u?.iban ? `<div class="pay"><span><span class="iban">${fmtIban(u.iban)}</span> · ${esc(u.full_name || "")}</span><button type="button" class="small" data-copy="${u.iban}">Kopyala</button></div>` : "";
+        return `<div class="card"><span><b>${esc(pname(t.from))}</b> → <b>${esc(pname(t.to))}</b></span><b>${money(t.amount / 100)}</b>${pay}</div>`; }).join("")
     : `<div class="empty">Herkes ödeşmiş 🎉</div>`;
 
   renderFormOptions();
@@ -431,7 +624,8 @@ function renderEvent() {
       : `<button type="button" class="small" data-edit="${e.id}">Düzenle</button><button type="button" class="small" data-del="${e.id}">Sil</button>`;
     return `<div class="card exp ${e.kind}">
       <div class="date"><b>${d.getDate()}</b>${AY[d.getMonth()]}</div>
-      <div><div class="desc">${esc(e.description)}</div><div class="sub">${sub}${e.updated_at ? " · düzenlendi" : ""}</div></div>
+      <div><div class="desc">${esc(e.description)}</div><div class="sub">${sub}</div>
+        <div class="sub">${esc(uname(e.created_by))} ekledi${e.updated_at ? ` · ${esc(uname(e.updated_by || e.created_by))} düzenledi` : ""}</div></div>
       <div class="amt">${money(amt)}<span class="mine">${mine}</span></div>
       <div class="actions">${actions}</div></div>`;
   }).join("") : `<div class="empty">Henüz kayıt yok. İlk harcamayı ekle.</div>`;
