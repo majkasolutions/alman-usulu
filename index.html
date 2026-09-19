@@ -101,18 +101,33 @@
   .members .row{padding:6px 0;border-bottom:1px solid var(--line)}
   .members .row:last-child{border:0}
   /* yarış pisti */
-  .race{padding:12px 14px 10px;overflow:hidden}
-  .race .head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
-  .race .head b{font-size:15px}
-  .lane{display:grid;grid-template-columns:76px 1fr 84px;gap:8px;align-items:center;padding:5px 0}
-  .lane .lname{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .lane .lamt{font-size:13px;text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
-  .lane.leader .lname,.lane.leader .lamt{font-weight:700;color:var(--ink)}
-  .track{position:relative;height:34px;margin-right:26px;border-bottom:2px dashed var(--line)}
-  .track::after{content:"🏁";position:absolute;right:-26px;bottom:2px;font-size:16px;opacity:.55}
-  .piece{position:absolute;bottom:2px;left:0;font-size:24px;line-height:1;transition:left .9s cubic-bezier(.2,.8,.2,1);filter:drop-shadow(0 2px 2px rgba(0,0,0,.25))}
-  .lane.leader .piece::after{content:"👑";position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:13px}
-  .lane.me .lname::after{content:" ·";color:var(--accent)}
+  .race{padding:12px 14px 12px;overflow:hidden;background:linear-gradient(180deg,var(--card),color-mix(in srgb,var(--card) 88%,var(--accent)))}
+  .race .head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px}
+  .race .head b{font-size:16px}
+  .trackSvg{width:100%;height:auto;display:block;overflow:visible}
+  .trackSvg .road{fill:none;stroke:#334155;stroke-width:26;stroke-linecap:round;stroke-linejoin:round}
+  .trackSvg .curb{fill:none;stroke:#f8fafc;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:6 10;opacity:.25}
+  .trackSvg .mid{fill:none;stroke:#fde68a;stroke-width:2;stroke-dasharray:8 8;opacity:.8}
+  .trackSvg .sign{font-size:12px}
+  .trackSvg .piece{transition:transform 1.4s cubic-bezier(.22,.9,.3,1)}
+  .trackSvg .piece text.em{font-size:22px;text-anchor:middle;dominant-baseline:central;filter:drop-shadow(0 2px 2px rgba(0,0,0,.35))}
+  .trackSvg .piece text.nm{font-size:9px;font-weight:700;text-anchor:middle;fill:var(--ink);paint-order:stroke;stroke:var(--card);stroke-width:3px}
+  .trackSvg .piece.leader text.cr{font-size:12px;text-anchor:middle}
+  .trackSvg .piece circle{fill:var(--card);opacity:.95}
+  .trackSvg .piece.me circle{stroke:var(--accent);stroke-width:2.5}
+  .rank{display:flex;flex-direction:column;gap:4px;margin-top:8px}
+  .rank .r{display:grid;grid-template-columns:28px 24px 1fr auto;gap:6px;align-items:center;font-size:14px;padding:5px 8px;border-radius:10px}
+  .rank .r.me{background:color-mix(in srgb,var(--accent) 12%,transparent)}
+  .rank .r .medal{font-size:16px;text-align:center}
+  .rank .r .gap{color:var(--muted);font-size:12px}
+  .rank .r b{font-variant-numeric:tabular-nums}
+  .badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  .badge{font-size:12px;padding:5px 9px;border-radius:999px;background:var(--bg);border:1px solid var(--line)}
+  .badge b{font-weight:600}
+  .nudge{margin-top:10px;padding:10px 12px;border-radius:10px;background:color-mix(in srgb,var(--accent) 14%,transparent);font-size:14px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .nudge button{white-space:nowrap}
+  .ticker{position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:600;z-index:9;box-shadow:0 8px 24px rgba(0,0,0,.25);animation:drop .4s ease-out}
+  @keyframes drop{from{transform:translate(-50%,-30px);opacity:0}}
   .tokens{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-top:8px}
   .tokens button{padding:6px 0;font-size:22px;line-height:1.2;border-radius:10px}
   .tokens button.on{background:var(--accent);border-color:transparent}
@@ -493,6 +508,7 @@ $("#newEventForm").addEventListener("submit", async (e) => {
 // ---------------------------------------------------------------- etkinlik
 async function openEvent(id) {
   if (!base) await loadHome().catch(() => {});
+  if (ev?.id !== id) racePrev = {};
   ev = { id };
   editing = null; pendingDelete = null; pendingDeleteEvent = false;
   try { await loadEvent(); } catch (err) { toast(err.message); location.hash = ""; return; }
@@ -526,26 +542,110 @@ function paidTotals() {
   for (const e of ev.expenses) if (e.kind === "expense") t[e.payer] = (t[e.payer] || 0) + Math.round(Number(e.amount) * 100);
   return t;
 }
+// pist: kıvrımlı yol, ilerleme = ödediği toplam / liderin toplamı
+const ROAD = "M 22 40 H 236 C 326 40 326 116 236 116 H 124 C 34 116 34 192 124 192 H 338";
+let racePrev = {};   // piyon → önceki konum yüzdesi (animasyon için)
 function renderRace() {
   const paid = paidTotals(), tok = tokenMap(), me = meP();
   const max = Math.max(0, ...Object.values(paid));
-  const order = [...ev.participants].sort((a, b) => paid[b.id] - paid[a.id]);
+  const order = [...ev.participants].sort((a, b) => paid[b.id] - paid[a.id] || a.name.localeCompare(b.name, "tr"));
   const leader = max > 0 ? order[0] : null;
   const total = Object.values(paid).reduce((s, v) => s + v, 0);
-  $("#race").innerHTML = `<div class="head"><b>${leader ? `${tok[leader.id]} ${esc(leader.name)} önde` : "Henüz kimse yola çıkmadı"}</b>
-      <span class="muted">${total ? "toplam " + money(total / 100) : ""}</span></div>` +
-    order.map((p, i) => {
-      const pct = max ? paid[p.id] / max * 100 : 0;
-      return `<div class="lane ${i === 0 && max > 0 ? "leader" : ""} ${p.id === me?.id ? "me" : ""}">
-        <span class="lname">${esc(p.name)}</span>
-        <div class="track"><span class="piece" style="left:calc(${pct.toFixed(1)}% - ${(pct / 100 * 26).toFixed(1)}px)">${tok[p.id]}</span></div>
-        <span class="lamt">${money(paid[p.id] / 100)}</span></div>`;
-    }).join("");
-  // lider değiştiyse konfeti
-  const key = "alman-usulu:leader:" + ev.id;
-  let prev = null; try { prev = localStorage.getItem(key); } catch {}
-  if (leader && prev && prev !== leader.id) confetti();
-  try { if (leader) localStorage.setItem(key, leader.id); } catch {}
+  const expenses = ev.expenses.filter(e => e.kind === "expense");
+
+  // --- yol ve piyonlar
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.setAttribute("viewBox", "0 0 360 214"); svg.setAttribute("class", "trackSvg");
+  svg.innerHTML = `<path class="curb" d="${ROAD}"/><path class="road" d="${ROAD}"/><path class="mid" d="${ROAD}"/>
+    <text class="sign" x="14" y="26">🚦</text><text class="sign" x="330" y="182" style="font-size:18px">🏁</text>
+    <text class="sign" x="296" y="84">☕</text><text class="sign" x="66" y="160">🍽️</text><text class="sign" x="214" y="160">⛽</text>`;
+  $("#race").innerHTML = "";
+  $("#race").appendChild(svg);
+  const path = svg.querySelector(".road"), len = path.getTotalLength();
+  const pt = (f) => path.getPointAtLength(Math.min(len, Math.max(0, f)) * 1);
+  const placed = [];
+  const pos = (pct) => {
+    // aynı noktaya gelenleri yolun enine doğru aç
+    const L = pct / 100 * len, a = pt(L), b = pt(Math.min(len, L + 1));
+    const nx = -(b.y - a.y), ny = (b.x - a.x), nl = Math.hypot(nx, ny) || 1;
+    let k = 0, x = a.x, y = a.y;
+    while (placed.some(q => Math.hypot(q.x - x, q.y - y) < 20) && k < 8) { k++; const sgn = k % 2 ? 1 : -1, d = Math.ceil(k / 2) * 18; x = a.x + nx / nl * d * sgn; y = a.y + ny / nl * d * sgn; }
+    placed.push({ x, y }); return { x, y };
+  };
+  const targets = {};
+  for (const p of order) targets[p.id] = max ? paid[p.id] / max * 100 : 0;
+  for (const p of [...order].reverse()) {   // lider en üstte çizilsin
+    const g = document.createElementNS(svgNS, "g");
+    g.setAttribute("class", `piece ${p.id === leader?.id ? "leader" : ""} ${p.id === me?.id ? "me" : ""}`);
+    const from = pos(racePrev[p.id] ?? 0);
+    const to = pos(targets[p.id]);
+    g.innerHTML = `<circle r="15" cy="-1"/><text class="em">${tok[p.id]}</text><text class="nm" y="18">${esc(p.name)}</text>${p.id === leader?.id ? `<text class="cr" y="-18">👑</text>` : ""}`;
+    g.style.transform = `translate(${from.x}px,${from.y}px)`;
+    svg.appendChild(g);
+    requestAnimationFrame(() => requestAnimationFrame(() => { g.style.transform = `translate(${to.x}px,${to.y}px)`; }));
+  }
+
+  // --- başlık, sıralama, unvanlar, dürtme, paylaş
+  const head = document.createElement("div"); head.className = "head";
+  head.innerHTML = `<b>${leader ? `${tok[leader.id]} ${esc(leader.name)} önde` : "🚦 Start bekleniyor"}</b><span class="muted">${total ? "toplam " + money(total / 100) : "ilk harcamayı kim yazacak?"}</span>`;
+  $("#race").prepend(head);
+
+  const medals = ["🥇", "🥈", "🥉"];
+  const rank = document.createElement("div"); rank.className = "rank";
+  rank.innerHTML = order.map((p, i) => {
+    const g = i === 0 ? 0 : paid[order[i - 1].id] - paid[p.id];
+    const gap = g > 0 ? `${money(g / 100)} geride` : i > 0 && paid[p.id] > 0 ? "berabere" : "";
+    return `<div class="r ${p.id === me?.id ? "me" : ""}"><span class="medal">${paid[p.id] > 0 ? (medals[i] || `${i + 1}.`) : "💤"}</span><span>${tok[p.id]}</span>
+      <span>${esc(p.name)} <span class="gap">${gap}</span></span><b>${money(paid[p.id] / 100)}</b></div>`;
+  }).join("");
+  $("#race").appendChild(rank);
+
+  const badges = [];
+  if (leader) badges.push(`👑 <b>${esc(leader.name)}</b> · Cömert ${leader.name.endsWith("a") || leader.name.endsWith("e") ? "Kraliçe" : "Kral"}`);
+  const big = expenses.reduce((m, e) => Number(e.amount) > Number(m?.amount || 0) ? e : m, null);
+  if (big) badges.push(`💸 <b>${esc(pname(big.payer))}</b> · tek seferde ${money(Number(big.amount))} (${esc(big.description)})`);
+  const writers = {}; for (const e of ev.expenses) writers[e.created_by] = (writers[e.created_by] || 0) + 1;
+  const scribe = Object.entries(writers).sort((a, b) => b[1] - a[1])[0];
+  if (scribe && scribe[1] >= 2) badges.push(`✍️ <b>${esc(uname(scribe[0]))}</b> · Kâtip, ${scribe[1]} kayıt`);
+  const last = ev.expenses.slice().sort((a, b) => a.created_at < b.created_at ? 1 : -1)[0];
+  if (last) badges.push(`🔥 Son hamle: <b>${esc(pname(last.payer))}</b> ${esc(last.description)} ${money(Number(last.amount))}`);
+  const sleepers = order.filter(p => paid[p.id] === 0);
+  if (max > 0 && sleepers.length && sleepers.length < order.length) badges.push(`😴 Cüzdan kilitli: ${sleepers.map(p => esc(p.name)).join(", ")}`);
+  if (badges.length) { const b = document.createElement("div"); b.className = "badges"; b.innerHTML = badges.map(x => `<span class="badge">${x}</span>`).join(""); $("#race").appendChild(b); }
+
+  const nudge = document.createElement("div"); nudge.className = "nudge";
+  let msg;
+  if (!me) msg = "Bu etkinlikte piyonun yok — katılımcılardan kendini ekle.";
+  else if (!leader) msg = "Pist boş. İlk harcamayı yazan lider olur 😎";
+  else if (leader.id === me.id) { const second = order[1]; msg = second && paid[second.id] > 0 ? `Tahttasın 👑 ${esc(second.name)} ${money((max - paid[second.id]) / 100)} geride.` : "Tahttasın 👑 Rakip yok… şimdilik."; }
+  else { const g = max - paid[me.id]; msg = g > 0 ? `Lider <b>${money(g / 100)}</b> önde — bir hesap ödesen kapanır 😏` : "Liderle berabersin — bir kahve öne geçirir ☕"; }
+  nudge.innerHTML = `<span>${msg}</span><button type="button" class="small" id="shareRace">Sıralamayı paylaş</button>`;
+  $("#race").appendChild(nudge);
+  $("#shareRace").addEventListener("click", () => {
+    const text = [`🏁 ${ev.name} — Alman Usulü yarışı`, ...order.map((p, i) => `${paid[p.id] > 0 ? (medals[i] || `${i + 1}.`) : "💤"} ${tok[p.id]} ${p.name} ${money(paid[p.id] / 100)}`),
+      `Toplam ${money(total / 100)} · kişi başı ${money(total / order.length / 100)}`, location.href].join("\n");
+    if (navigator.share) navigator.share({ text }).catch(() => {});
+    else navigator.clipboard.writeText(text).then(() => toast("Sıralama kopyalandı")).catch(() => toast("Kopyalanamadı"));
+  });
+
+  // --- geçiş / lider değişimi duyurusu (cihazda önceki sıralamaya göre)
+  const key = "alman-usulu:rank:" + ev.id;
+  let prev = null; try { prev = JSON.parse(localStorage.getItem(key)); } catch {}
+  const now = order.filter(p => paid[p.id] > 0).map(p => p.id);
+  if (prev && prev.length) {
+    const over = order.find((p, i) => i < prev.indexOf(p.id) && prev.includes(p.id) && paid[p.id] > 0);
+    if (over) {
+      const victim = prev.find(id => prev.indexOf(id) < prev.indexOf(over.id) && now.indexOf(id) > now.indexOf(over.id));
+      ticker(`🚨 ${tok[over.id]} ${over.name} öne geçti${victim ? ` — ${pname(victim)} geride kaldı` : ""}!`); confetti();
+    }
+  }
+  try { localStorage.setItem(key, JSON.stringify(now)); } catch {}
+  racePrev = targets;
+}
+function ticker(msg) {
+  const t = document.createElement("div"); t.className = "ticker"; t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), 3500);
 }
 function confetti() {
   const c = document.createElement("div"); c.className = "confetti";
