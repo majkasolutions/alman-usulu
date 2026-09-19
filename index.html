@@ -421,7 +421,7 @@ function renderTokenCard() {
   const taken = Object.fromEntries(base.users.filter(u => u.token && u.email !== base.me).map(u => [u.token, u.name]));
   $("#tokenGrid").innerHTML = TOKENS.map(t => `<button type="button" data-token="${t}" class="${me?.token === t ? "on" : ""}" ${taken[t] ? `disabled title="${esc(taken[t])} aldı"` : ""}>${t}</button>`).join("");
 }
-$("#tokenToggle").addEventListener("click", () => $("#tokenGrid").classList.toggle("hidden"));
+$("#tokenToggle").addEventListener("click", async () => { await loadHome().catch(() => {}); renderTokenCard(); $("#tokenGrid").classList.toggle("hidden"); });
 // piyonu olmayana açılışta pencere (oturum başına bir kez ertelenebilir)
 function maybeTokenModal() {
   const me = base?.users.find(u => u.email === base.me);
@@ -528,12 +528,13 @@ function tokenMap() {
   const users = ev.users || base?.users || [];
   const used = new Set(users.filter(u => u.token).map(u => u.token));
   const m = {};
+  const seen = new Set();
   for (const p of ev.participants) {
     const t = p.email ? users.find(u => u.email === p.email)?.token : null;
-    if (t) { m[p.id] = t; continue; }
+    if (t && !seen.has(t)) { m[p.id] = t; seen.add(t); continue; }
     let i = hash(p.id) % TOKENS.length, k = 0;
     while (used.has(TOKENS[i]) && k < TOKENS.length) { i = (i + 1) % TOKENS.length; k++; }
-    m[p.id] = TOKENS[i]; used.add(TOKENS[i]);
+    m[p.id] = TOKENS[i]; used.add(TOKENS[i]); seen.add(TOKENS[i]);
   }
   return m;
 }
@@ -556,7 +557,7 @@ function renderRace() {
   // --- yol ve piyonlar
   const svgNS = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(svgNS, "svg");
-  svg.setAttribute("viewBox", "0 0 360 214"); svg.setAttribute("class", "trackSvg");
+  svg.setAttribute("viewBox", "0 0 360 218"); svg.setAttribute("class", "trackSvg");
   svg.innerHTML = `<path class="curb" d="${ROAD}"/><path class="road" d="${ROAD}"/><path class="mid" d="${ROAD}"/>
     <text class="sign" x="14" y="26">🚦</text><text class="sign" x="330" y="182" style="font-size:18px">🏁</text>
     <text class="sign" x="296" y="84">☕</text><text class="sign" x="66" y="160">🍽️</text><text class="sign" x="214" y="160">⛽</text>`;
@@ -565,25 +566,29 @@ function renderRace() {
   const path = svg.querySelector(".road"), len = path.getTotalLength();
   const pt = (f) => path.getPointAtLength(Math.min(len, Math.max(0, f)) * 1);
   const placed = [];
+  const near = (x, y) => placed.some(q => Math.hypot(q.x - x, q.y - y) < 22);
   const pos = (pct) => {
-    // aynı noktaya gelenleri yolun enine doğru aç
-    const L = pct / 100 * len, a = pt(L), b = pt(Math.min(len, L + 1));
-    const nx = -(b.y - a.y), ny = (b.x - a.x), nl = Math.hypot(nx, ny) || 1;
-    let k = 0, x = a.x, y = a.y;
-    while (placed.some(q => Math.hypot(q.x - x, q.y - y) < 20) && k < 8) { k++; const sgn = k % 2 ? 1 : -1, d = Math.ceil(k / 2) * 18; x = a.x + nx / nl * d * sgn; y = a.y + ny / nl * d * sgn; }
+    let L = pct / 100 * len, a = pt(L), x = a.x, y = a.y, k = 0;
+    if (pct > 0) {
+      // yoldaki piyonlar çakışırsa yol üzerinde bir adım geriye (konvoy gibi), yoldan çıkmaz
+      while (near(x, y) && k < 12) { k++; L = Math.max(0, L - 22); a = pt(L); x = a.x; y = a.y; }
+    } else {
+      // start'takiler pit'te: startın altında, üçerli sıra
+      x = 22 + (k % 3) * 26; y = 72;
+      while (near(x, y) && k < 10) { k++; x = 22 + (k % 3) * 26; y = 72 + 28 * Math.floor(k / 3); }
+    }
     placed.push({ x, y }); return { x, y };
   };
-  const targets = {};
-  for (const p of order) targets[p.id] = max ? paid[p.id] / max * 100 : 0;
-  for (const p of [...order].reverse()) {   // lider en üstte çizilsin
+  const targets = {}, to = {};
+  for (const p of order) { targets[p.id] = max ? paid[p.id] / max * 100 : 0; to[p.id] = pos(targets[p.id]); }   // lider önce yerleşir, geride kalan arkaya dizilir
+  for (const p of [...order].reverse()) {   // çizim ters sırada: lider en üstte
     const g = document.createElementNS(svgNS, "g");
     g.setAttribute("class", `piece ${p.id === leader?.id ? "leader" : ""} ${p.id === me?.id ? "me" : ""}`);
-    const from = pos(racePrev[p.id] ?? 0);
-    const to = pos(targets[p.id]);
+    const from = pt((racePrev[p.id] ?? 0) / 100 * len);
     g.innerHTML = `<circle r="15" cy="-1"/><text class="em">${tok[p.id]}</text><text class="nm" y="18">${esc(p.name)}</text>${p.id === leader?.id ? `<text class="cr" y="-18">👑</text>` : ""}`;
     g.style.transform = `translate(${from.x}px,${from.y}px)`;
     svg.appendChild(g);
-    requestAnimationFrame(() => requestAnimationFrame(() => { g.style.transform = `translate(${to.x}px,${to.y}px)`; }));
+    requestAnimationFrame(() => requestAnimationFrame(() => { g.style.transform = `translate(${to[p.id].x}px,${to[p.id].y}px)`; }));
   }
 
   // --- başlık, sıralama, unvanlar, dürtme, paylaş
