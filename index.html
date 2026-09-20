@@ -143,6 +143,34 @@
   .iban{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;letter-spacing:.02em;word-break:break-all}
   .settle .card{flex-wrap:wrap}
   .settle .pay{flex-basis:100%;display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px;padding-top:6px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+  /* sekmeler, alt panel, profil, sen kartı */
+  .tabs.seg{margin:12px 0 4px;position:sticky;top:0;z-index:3;background:var(--bg);padding:6px 0;}
+  .tabs.seg>button{background:var(--card);border:1px solid var(--line)}
+  .tabs.seg>button.on{background:var(--ink);color:var(--bg);border-color:transparent}
+  .tabs.seg>button span{opacity:.6;font-weight:500}
+  .fab{position:fixed;right:16px;bottom:calc(20px + env(safe-area-inset-bottom));z-index:5;background:var(--accent);color:var(--accent-ink);border:0;border-radius:999px;padding:14px 20px;font-weight:700;font-size:16px;box-shadow:0 10px 24px rgba(37,99,235,.4)}
+  .sheet{position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:10;display:flex;align-items:flex-end;justify-content:center}
+  .sheetBody{background:var(--card);width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:20px 20px 0 0;padding:14px 16px calc(24px + env(safe-area-inset-bottom));animation:up .25s ease-out}
+  @keyframes up{from{transform:translateY(40px);opacity:0}}
+  .prof{padding:4px 14px}
+  .prof details{border-bottom:1px solid var(--line)}
+  .prof details:last-child{border:0}
+  .prof summary{list-style:none;display:flex;align-items:center;gap:12px;padding:12px 0;cursor:pointer}
+  .prof summary::-webkit-details-marker{display:none}
+  .prof summary .big{font-size:26px;line-height:1;width:32px;text-align:center}
+  .prof summary .grow{display:flex;flex-direction:column;min-width:0}
+  .prof summary .muted{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .prof summary .chev{color:var(--muted);transition:transform .2s}
+  .prof details[open] summary .chev{transform:rotate(90deg)}
+  .prof details>*:not(summary){padding-bottom:14px}
+  .mecard{margin-top:10px;padding:14px;border-left:4px solid var(--accent)}
+  .mecard .hl{font-size:22px;font-weight:700;letter-spacing:-.02em;margin-top:2px}
+  .mecard .lines{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+  .mecard .lines div{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:14px}
+  .mecard .lines .iban{font-size:12px}
+  .settle .card.dim{opacity:.55}
+  .settle .card.mine{border-color:var(--accent)}
+  .bal .card.mine{border-color:var(--accent)}
   .confetti{position:fixed;inset:0;pointer-events:none;z-index:8;overflow:hidden}
   .confetti span{position:absolute;top:-10%;font-size:22px;animation:fall 1.8s ease-in forwards}
   @keyframes fall{to{transform:translateY(120vh) rotate(540deg);opacity:.2}}
@@ -168,41 +196,17 @@
   </section>
 
   <!-- ============ Etkinlikler -->
+  <!-- ============ Ana sayfa -->
   <section id="home" class="hidden">
     <div class="row">
       <div class="brand grow"><img src="icons/logo.svg" alt=""><div><h1>Alman Usulü</h1><div class="muted" id="who"></div></div></div>
       <button class="small" id="logoutBtn">Çıkış</button>
     </div>
 
-    <h2>Piyonun</h2>
-    <div class="card" id="tokenCard">
-      <div class="tokenCard"><span class="big" id="myToken">❔</span>
-        <div class="grow"><div id="tokenText">Yarış pistindeki amblemin</div><div class="muted">Etkinliklerde ödediğin toplamla ilerler.</div></div>
-        <button type="button" class="small" id="tokenToggle">Seç</button></div>
-      <div class="tokens hidden" id="tokenGrid"></div>
-      <div class="err" id="tokenErr"></div>
-    </div>
-
-    <h2>Etkinlikler</h2>
+    <h2>Etkinlikler <button type="button" class="link" id="newEventToggle">+ Yeni</button></h2>
     <div class="list" id="events"></div>
-
-    <h2>Ödeme bilgilerim <span class="muted">isteğe bağlı</span></h2>
-    <form class="card" id="bankForm">
-      <div class="muted">IBAN girersen arkadaşların ödeşirken görür. IBAN için ad soyad zorunlu.</div>
-      <label for="fullName">Ad Soyad</label>
-      <input id="fullName" type="text" maxlength="80" autocomplete="name" placeholder="Hesap sahibinin adı">
-      <label for="ibanIn">IBAN</label>
-      <input id="ibanIn" type="text" maxlength="40" autocomplete="off" autocapitalize="characters" placeholder="TR00 0000 0000 0000 0000 0000 00">
-      <button class="primary" type="submit">Kaydet</button>
-      <div class="err" id="bankErr"></div>
-    </form>
-
-    <h2>IBAN'lar</h2>
-    <div class="list" id="ibans"></div>
-
-    <h2>Yeni etkinlik</h2>
-    <form class="card" id="newEventForm">
-      <label for="evName">Ad</label>
+    <form class="card hidden" id="newEventForm" style="margin-top:10px">
+      <label for="evName">Etkinlik adı</label>
       <input id="evName" type="text" maxlength="60" required placeholder="Cunda tatili, Ev, Kamp…">
       <label>Katılımcılar <span class="muted" id="newCount"></span></label>
       <div class="chips" id="newUsers"></div>
@@ -214,6 +218,31 @@
       <button class="primary" type="submit">Etkinliği oluştur</button>
       <div class="err" id="newEventErr"></div>
     </form>
+
+    <h2>Profilim</h2>
+    <div class="card prof">
+      <details id="tokenCard">
+        <summary><span class="big" id="myToken">❔</span><span class="grow"><b id="tokenText">Piyonun</b><span class="muted" id="tokenSub"></span></span><span class="chev">›</span></summary>
+        <div class="tokens" id="tokenGrid"></div>
+        <div class="err" id="tokenErr"></div>
+      </details>
+      <details id="bankCard">
+        <summary><span class="big">🏦</span><span class="grow"><b>Ödeme bilgilerim</b><span class="muted" id="bankSub">IBAN girilmedi · isteğe bağlı</span></span><span class="chev">›</span></summary>
+        <form id="bankForm">
+          <div class="muted">IBAN girersen arkadaşların ödeşirken görür. IBAN için ad soyad zorunlu.</div>
+          <label for="fullName">Ad Soyad</label>
+          <input id="fullName" type="text" maxlength="80" autocomplete="name" placeholder="Hesap sahibinin adı">
+          <label for="ibanIn">IBAN</label>
+          <input id="ibanIn" type="text" maxlength="40" autocomplete="off" autocapitalize="characters" placeholder="TR00 0000 0000 0000 0000 0000 00">
+          <button class="primary" type="submit">Kaydet</button>
+          <div class="err" id="bankErr"></div>
+        </form>
+      </details>
+      <details id="ibanCard">
+        <summary><span class="big">👥</span><span class="grow"><b>Arkadaşların IBAN'ları</b><span class="muted" id="ibanSub"></span></span><span class="chev">›</span></summary>
+        <div class="list" id="ibans" style="margin-top:8px"></div>
+      </details>
+    </div>
   </section>
 
   <!-- ============ Etkinlik -->
@@ -221,21 +250,63 @@
     <div class="row">
       <button class="small" id="backBtn">←</button>
       <div class="brand grow"><img src="icons/logo.svg" alt=""><div><h1 id="evTitle"></h1><div class="muted" id="evSub"></div></div></div>
-      <button class="small" id="renameBtn" title="Adı değiştir">✎</button>
       <button class="small" id="refreshBtn" title="Yenile">↻</button>
     </div>
 
-    <h2>Yarış <span class="muted" id="raceSub">ödediği toplam</span></h2>
-    <div class="card race" id="race"></div>
+    <div class="tabs seg" id="evTabs">
+      <button type="button" data-tab="ozet" class="on">Özet</button>
+      <button type="button" data-tab="kayitlar">Kayıtlar <span id="count"></span></button>
+      <button type="button" data-tab="kisiler">Kişiler</button>
+    </div>
 
-    <h2>Durum</h2>
-    <div class="bal" id="balances"></div>
+    <div data-tab="ozet">
+      <div class="card mecard" id="meCard"></div>
 
-    <h2>Kim kime ne verecek</h2>
-    <div class="settle" id="settle"></div>
+      <h2>Yarış <span class="muted" id="raceSub">ödediği toplam</span></h2>
+      <div class="card race" id="race"></div>
 
-    <h2><span id="formTitle">Yeni kayıt</span><button type="button" class="link hidden" id="cancelEdit">Vazgeç</button></h2>
-    <form class="card" id="expForm">
+      <h2>Herkesin durumu</h2>
+      <div class="bal" id="balances"></div>
+
+      <h2>Kim kime ne verecek</h2>
+      <div class="settle" id="settle"></div>
+    </div>
+
+    <div data-tab="kayitlar" class="hidden">
+      <div class="list" id="list" style="margin-top:12px"></div>
+    </div>
+
+    <div data-tab="kisiler" class="hidden">
+      <h2>Katılımcılar <span class="muted" id="memberCount"></span></h2>
+      <div class="card">
+        <div class="members" id="members"></div>
+        <div id="addMember">
+          <label>Katılımcı ekle</label>
+          <div class="chips" id="addUsers"></div>
+          <div class="row" style="margin-top:10px">
+            <input id="addGuest" type="text" maxlength="40" placeholder="Misafir adı" class="grow">
+            <button type="button" class="small" id="addGuestBtn">Ekle</button>
+          </div>
+        </div>
+        <div class="err" id="memberErr"></div>
+      </div>
+
+      <h2>Etkinlik</h2>
+      <div class="card">
+        <div class="row"><span class="grow">Adı değiştir</span><button type="button" class="small" id="renameBtn">✎ Düzenle</button></div>
+        <div class="row" style="margin-top:10px"><span class="grow muted">Etkinliği ve tüm kayıtlarını sil</span><button type="button" class="small danger" id="delEventBtn">Sil</button></div>
+      </div>
+    </div>
+
+    <button type="button" class="fab" id="fab">＋ Kayıt</button>
+  </section>
+</main>
+
+<!-- ============ Kayıt paneli (alttan) -->
+<div class="sheet hidden" id="sheet">
+  <div class="sheetBody">
+    <div class="row" style="margin-bottom:6px"><b class="grow" id="formTitle">Yeni kayıt</b><button type="button" class="link" id="cancelEdit">Kapat</button></div>
+    <form id="expForm">
       <div class="tabs" id="kindTabs">
         <button type="button" data-kind="expense" class="on">Harcama</button>
         <button type="button" data-kind="payment">Borç ödemesi</button>
@@ -277,31 +348,8 @@
       <button class="primary" type="submit" id="saveBtn">Kaydet</button>
       <div class="err" id="expErr"></div>
     </form>
-
-    <h2>Kayıtlar <span class="muted" id="count"></span></h2>
-    <div class="list" id="list"></div>
-
-    <h2>Katılımcılar <span class="muted" id="memberCount"></span></h2>
-    <div class="card">
-      <div class="members" id="members"></div>
-      <div id="addMember">
-        <label>Katılımcı ekle</label>
-        <div class="chips" id="addUsers"></div>
-        <div class="row" style="margin-top:10px">
-          <input id="addGuest" type="text" maxlength="40" placeholder="Misafir adı" class="grow">
-          <button type="button" class="small" id="addGuestBtn">Ekle</button>
-        </div>
-      </div>
-      <div class="err" id="memberErr"></div>
-    </div>
-
-    <h2>Etkinlik</h2>
-    <div class="card row">
-      <span class="grow muted">Etkinliği ve tüm kayıtlarını sil</span>
-      <button type="button" class="small danger" id="delEventBtn">Sil</button>
-    </div>
-  </section>
-</main>
+  </div>
+</div>
 <div class="modal hidden" id="tokenModal">
   <div class="card">
     <h3>Piyonunu seç</h3>
@@ -382,6 +430,16 @@ function route() {
 }
 window.addEventListener("hashchange", route);
 $("#backBtn").addEventListener("click", () => { location.hash = ""; });
+function setTab(t) {
+  $("#evTabs").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.tab === t));
+  $("#event").querySelectorAll("[data-tab]:not(button)").forEach(d => d.classList.toggle("hidden", d.dataset.tab !== t));
+  try { sessionStorage.setItem("alman-usulu:tab", t); } catch {}
+}
+$("#evTabs").addEventListener("click", (e) => { const b = e.target.closest("[data-tab]"); if (b) setTab(b.dataset.tab); });
+function openSheet() { $("#sheet").classList.remove("hidden"); document.body.style.overflow = "hidden"; }
+function closeSheet() { $("#sheet").classList.add("hidden"); document.body.style.overflow = ""; }
+$("#fab").addEventListener("click", () => { resetForm(); openSheet(); setTimeout(() => $("#desc").focus(), 250); });
+$("#sheet").addEventListener("click", (e) => { if (e.target === $("#sheet")) { resetForm(); closeSheet(); } });
 $("#refreshBtn").addEventListener("click", () => loadEvent().then(renderEvent).catch(e => toast(e.message)));
 document.addEventListener("visibilitychange", () => {
   if (document.hidden || !session) return;
@@ -400,7 +458,8 @@ function renderHome() {
       <div class="grow"><div class="name">${esc(e.name)}</div>
         <div class="muted">${e.participant_count} kişi · ${e.expense_count} kayıt${Number(e.total) ? " · " + money(Number(e.total)) : ""}</div></div>
       <span class="arrow">›</span></div>`).join("")
-    : `<div class="empty">Henüz etkinlik yok. Aşağıdan bir tane oluştur.</div>`;
+    : `<div class="empty">Henüz etkinlik yok. "+ Yeni" ile oluştur.</div>`;
+  if (!base.events.length) $("#newEventForm").classList.remove("hidden");
   if (!$("#newUsers").children.length) {
     $("#newUsers").innerHTML = base.users.map(u =>
       `<label class="chip on"><input type="checkbox" value="${u.email}" checked>${esc(u.name)}</label>`).join("");
@@ -414,14 +473,14 @@ function renderTokenCard() {
   const me = base.users.find(u => u.email === base.me);
   const has = !!me?.token;
   $("#myToken").textContent = has ? me.token : "❔";
-  $("#tokenText").textContent = has ? "Yarış pistindeki amblemin" : "Piyonunu seç!";
-  $("#tokenCard").classList.toggle("pick", !has);
-  $("#tokenToggle").textContent = has ? "Değiştir" : "Seç";
-  if (!has) $("#tokenGrid").classList.remove("hidden");
+  $("#tokenText").textContent = has ? "Piyonun" : "Piyonunu seç!";
+  $("#tokenSub").textContent = has ? "Yarış pistindeki amblemin · değiştirmek için dokun" : "Yarış pistinde seni temsil eder";
+  if (!has) $("#tokenCard").open = true;
   const taken = Object.fromEntries(base.users.filter(u => u.token && u.email !== base.me).map(u => [u.token, u.name]));
   $("#tokenGrid").innerHTML = TOKENS.map(t => `<button type="button" data-token="${t}" class="${me?.token === t ? "on" : ""}" ${taken[t] ? `disabled title="${esc(taken[t])} aldı"` : ""}>${t}</button>`).join("");
 }
-$("#tokenToggle").addEventListener("click", async () => { await loadHome().catch(() => {}); renderTokenCard(); $("#tokenGrid").classList.toggle("hidden"); });
+$("#tokenCard").addEventListener("toggle", async () => { if ($("#tokenCard").open) { await loadHome().catch(() => {}); renderTokenCard(); } });
+$("#newEventToggle").addEventListener("click", () => { $("#newEventForm").classList.toggle("hidden"); if (!$("#newEventForm").classList.contains("hidden")) $("#evName").focus(); });
 // piyonu olmayana açılışta pencere (oturum başına bir kez ertelenebilir)
 function maybeTokenModal() {
   const me = base?.users.find(u => u.email === base.me);
@@ -447,7 +506,9 @@ function renderBank() {
   if (document.activeElement !== $("#fullName") && document.activeElement !== $("#ibanIn")) {
     $("#fullName").value = me?.full_name || ""; $("#ibanIn").value = fmtIban(me?.iban);
   }
+  $("#bankSub").textContent = me?.iban ? `${fmtIban(me.iban)} · ${me.full_name || ""}` : "IBAN girilmedi · isteğe bağlı";
   const list = base.users.filter(u => u.iban);
+  $("#ibanSub").textContent = list.length ? list.map(u => u.name).join(", ") : "henüz kimse girmedi";
   $("#ibans").innerHTML = list.length ? list.map(u => `<div class="card row"><div class="grow"><div><b>${esc(u.name)}</b> <span class="muted">${esc(u.full_name || "")}</span></div><div class="iban">${fmtIban(u.iban)}</div></div>
     <button type="button" class="small" data-copy="${u.iban}">Kopyala</button></div>`).join("")
     : `<div class="empty">Henüz kimse IBAN girmedi.</div>`;
@@ -469,7 +530,7 @@ $("#tokenGrid").addEventListener("click", async (e) => {
   $("#tokenErr").textContent = "";
   try {
     await rpc("hesap_set_token", { p_token: b.dataset.token });
-    await loadHome(); renderTokenCard(); $("#tokenGrid").classList.add("hidden"); toast(`Piyonun ${b.dataset.token}`);
+    await loadHome(); renderTokenCard(); $("#tokenCard").open = false; toast(`Piyonun ${b.dataset.token}`);
   } catch (err) { $("#tokenErr").textContent = err.message; }
 });
 $("#events").addEventListener("click", (e) => { const c = e.target.closest("[data-open]"); if (c) location.hash = "#e/" + c.dataset.open; });
@@ -512,7 +573,9 @@ async function openEvent(id) {
   ev = { id };
   editing = null; pendingDelete = null; pendingDeleteEvent = false;
   try { await loadEvent(); } catch (err) { toast(err.message); location.hash = ""; return; }
-  resetForm();
+  resetForm(); closeSheet();
+  let t = "ozet"; try { t = sessionStorage.getItem("alman-usulu:tab") || "ozet"; } catch {}
+  setTab(t);
   renderEvent();
   show("event");
   maybeTokenModal();
@@ -693,25 +756,41 @@ function renderEvent() {
   renderRace();
 
   const b = balances();
+  const s0 = settlements(b);
+  // --- Sen kartı: benim durumum + sadece beni ilgilendiren ödeşmeler
+  if (me) {
+    const v = (b[me.id] || 0) / 100;
+    const mine = s0.filter(t => t.from === me.id || t.to === me.id);
+    const lines = mine.map(t => {
+      if (t.to === me.id) return `<div><span><b>${esc(pname(t.from))}</b> sana verecek</span><b class="pos">${money(t.amount / 100)}</b></div>`;
+      const u = (ev.users || []).find(x => x.email && x.email === P(t.to)?.email);
+      return `<div><span><b>${esc(pname(t.to))}</b>'a vereceksin${u?.iban ? ` <button type="button" class="link" data-copy="${u.iban}">IBAN kopyala</button>` : ""}</span><b class="neg">${money(t.amount / 100)}</b></div>`;
+    }).join("");
+    $("#meCard").innerHTML = `<div class="muted">Sen · ${esc(me.name)}</div>
+      <div class="hl ${v > 0 ? "pos" : v < 0 ? "neg" : ""}">${v > 0 ? money(v) + " alacaklısın" : v < 0 ? money(-v) + " borçlusun" : "Ödeşmişsin 🎉"}</div>
+      ${lines ? `<div class="lines">${lines}</div>` : ""}`;
+  } else $("#meCard").innerHTML = `<div class="muted">Bu etkinlikte katılımcı değilsin — Kişiler sekmesinden kendini ekle.</div>`;
   $("#balances").innerHTML = ev.participants.map(p => {
     const v = (b[p.id] || 0) / 100;
     const cls = v > 0 ? "pos" : v < 0 ? "neg" : "";
     const txt = v > 0 ? "alacaklı" : v < 0 ? "borçlu" : "ödeşmiş";
-    return `<div class="card"><div class="name">${esc(p.name)}${p.id === me?.id ? ' <span class="muted">(sen)</span>' : ""}</div>
+    return `<div class="card ${p.id === me?.id ? "mine" : ""}"><div class="name">${esc(p.name)}${p.id === me?.id ? ' <span class="muted">(sen)</span>' : ""}</div>
       <div class="amt ${cls}">${money(Math.abs(v))}</div><div class="muted">${txt}</div></div>`;
   }).join("");
 
-  const s = settlements(b);
+  const s = [...s0].sort((x, y) => (me && (y.from === me.id || y.to === me.id)) - (me && (x.from === me.id || x.to === me.id)));
   $("#settle").innerHTML = s.length
     ? s.map(t => {
         const u = (ev.users || []).find(x => x.email && x.email === P(t.to)?.email);
         const pay = u?.iban ? `<div class="pay"><span><span class="iban">${fmtIban(u.iban)}</span> · ${esc(u.full_name || "")}</span><button type="button" class="small" data-copy="${u.iban}">Kopyala</button></div>` : "";
-        return `<div class="card"><span><b>${esc(pname(t.from))}</b> → <b>${esc(pname(t.to))}</b></span><b>${money(t.amount / 100)}</b>${pay}</div>`; }).join("")
+        const rel = me && (t.from === me.id || t.to === me.id);
+        return `<div class="card ${rel ? "mine" : me ? "dim" : ""}"><span><b>${esc(pname(t.from))}</b> → <b>${esc(pname(t.to))}</b></span><b>${money(t.amount / 100)}</b>${pay}</div>`; }).join("")
     : `<div class="empty">Herkes ödeşmiş 🎉</div>`;
 
   renderFormOptions();
 
   $("#count").textContent = ev.expenses.length ? `(${ev.expenses.length})` : "";
+  $("#fab").classList.toggle("hidden", !ev.participants.length);
   $("#list").innerHTML = ev.expenses.length ? ev.expenses.map(e => {
     const d = new Date(e.spent_on + "T00:00:00");
     const amt = Number(e.amount);
@@ -881,7 +960,7 @@ $("#payer").addEventListener("change", syncTo);
 
 function resetForm() {
   editing = null;
-  $("#formTitle").textContent = "Yeni kayıt"; $("#cancelEdit").classList.add("hidden");
+  $("#formTitle").textContent = "Yeni kayıt";
   $("#saveBtn").textContent = "Kaydet"; $("#expErr").textContent = "";
   $("#desc").value = ""; $("#amount").value = ""; $("#date").value = today();
   setKind("expense"); setMode("equal");
@@ -898,7 +977,7 @@ function startEdit(id) {
   const e = ev.expenses.find(x => x.id === id); if (!e) return;
   resetForm();
   editing = id;
-  $("#formTitle").textContent = "Kaydı düzenle"; $("#cancelEdit").classList.remove("hidden");
+  $("#formTitle").textContent = "Kaydı düzenle"; openSheet();
   $("#saveBtn").textContent = "Değişiklikleri kaydet";
   $("#desc").value = e.description; $("#amount").value = Number(e.amount); $("#date").value = e.spent_on;
   $("#payer").value = e.payer; syncTo();
@@ -912,9 +991,9 @@ function startEdit(id) {
     $("#shareRows").querySelectorAll("[data-w]").forEach(i => { const s = e.shares.find(x => x.p === i.dataset.w); i.value = s ? (s.w ?? 1) : 0; });
   }
   updateHints();
-  $("#expForm").scrollIntoView({ behavior: "smooth", block: "start" });
+  $("#sheet .sheetBody").scrollTop = 0;
 }
-$("#cancelEdit").addEventListener("click", resetForm);
+$("#cancelEdit").addEventListener("click", () => { resetForm(); closeSheet(); });
 
 $("#expForm").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -933,10 +1012,8 @@ $("#expForm").addEventListener("submit", async (e) => {
       p_spent_on: $("#date").value, p_split_mode: kind === "payment" ? "equal" : mode, p_shares: shares,
     });
     toast(editing ? "Güncellendi" : "Kaydedildi");
-    const wasEdit = !!editing;
-    resetForm();
+    resetForm(); closeSheet();
     await loadEvent(); renderEvent();
-    if (wasEdit) $("#list").scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (err) { $("#expErr").textContent = err.message; }
   finally { btn.disabled = false; }
 });
