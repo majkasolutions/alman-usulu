@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
-<title>Alman Usulü</title>
+<title>Payday</title>
 <meta name="theme-color" content="#0f172a">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Alman Usulü">
+<meta name="apple-mobile-web-app-title" content="Payday">
 <link rel="manifest" href="icons/manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/svg+xml" href="icons/logo.svg">
@@ -182,7 +182,7 @@
   <section id="login" class="hidden">
     <div class="hero">
       <img src="icons/logo.svg" alt="">
-      <h1>Alman Usulü</h1>
+      <h1>Payday</h1>
       <p class="muted">Kim ne ödedi, kim kime borçlu — arkadaş defteri.</p>
     </div>
     <form class="card" id="loginForm" autocomplete="on">
@@ -199,7 +199,7 @@
   <!-- ============ Ana sayfa -->
   <section id="home" class="hidden">
     <div class="row">
-      <div class="brand grow"><img src="icons/logo.svg" alt=""><div><h1>Alman Usulü</h1><div class="muted" id="who"></div></div></div>
+      <div class="brand grow"><img src="icons/logo.svg" alt=""><div><h1>Payday</h1><div class="muted" id="who"></div></div></div>
       <button class="small" id="logoutBtn">Çıkış</button>
     </div>
 
@@ -691,7 +691,7 @@ function renderRace() {
   nudge.innerHTML = `<span>${msg}</span><button type="button" class="small" id="shareRace">Sıralamayı paylaş</button>`;
   $("#race").appendChild(nudge);
   $("#shareRace").addEventListener("click", () => {
-    const text = [`🏁 ${ev.name} — Alman Usulü yarışı`, ...order.map((p, i) => `${paid[p.id] > 0 ? (medals[i] || `${i + 1}.`) : "💤"} ${tok[p.id]} ${p.name} ${money(paid[p.id] / 100)}`),
+    const text = [`🏁 ${ev.name} — Payday yarışı`, ...order.map((p, i) => `${paid[p.id] > 0 ? (medals[i] || `${i + 1}.`) : "💤"} ${tok[p.id]} ${p.name} ${money(paid[p.id] / 100)}`),
       `Toplam ${money(total / 100)} · kişi başı ${money(total / order.length / 100)}`, location.href].join("\n");
     if (navigator.share) navigator.share({ text }).catch(() => {});
     else navigator.clipboard.writeText(text).then(() => toast("Sıralama kopyalandı")).catch(() => toast("Kopyalanamadı"));

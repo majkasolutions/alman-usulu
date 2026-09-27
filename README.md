@@ -1,4 +1,4 @@
-# Alman Usulü
+# Payday (eski adı: Alman Usulü)
 
 Arkadaş grubunun harcama defteri (Splitwise benzeri). Tek sayfa, GitHub Pages'te yayınlanır.
 
