@@ -12,8 +12,8 @@
 // JWT doğrulaması KAPALI (herkese açık kayıt formu); IP başına dakikada 5 istek.
 
 import nodemailer from "npm:nodemailer@6.9.16";
+import { APP_URL, mail } from "./mail.ts";
 
-const APP_URL = "https://majkasolutions.github.io/alman-usulu/";
 const ORIGINS = ["https://majkasolutions.github.io", "http://localhost:8765", "http://localhost:8766"];
 const SB_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SB_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -52,24 +52,6 @@ async function srv(fn: string, args: Record<string, unknown>) {
   const body = await r.json().catch(() => null);
   if (!r.ok) throw new Error(body?.message ?? `db ${r.status}`);
   return body as { email: string; name: string; token: string } | null;
-}
-
-function esc(s: string) {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
-
-function mail(kind: "verify" | "reset", name: string, link: string) {
-  const [subject, intro, button, note] = kind === "verify"
-    ? ["Payday hesabını onayla", "Payday'e hoş geldin! Hesabını açmak için e-posta adresini onayla.", "E-postamı onayla", "Link 48 saat geçerli."]
-    : ["Payday şifre sıfırlama", "Şifreni sıfırlamak için aşağıdaki düğmeye tıkla. Bu isteği sen yapmadıysan e-postayı yok sayabilirsin.", "Yeni şifre belirle", "Link 1 saat geçerli."];
-  const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#111">
-  <h2 style="margin:0 0 12px">Payday</h2>
-  <p>Merhaba ${esc(name)},</p><p>${intro}</p>
-  <p style="margin:24px 0"><a href="${link}" style="background:#2563eb;color:#fff;padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:600">${button}</a></p>
-  <p style="color:#666;font-size:13px">${note} Düğme çalışmazsa bu adresi tarayıcına yapıştır:<br><a href="${link}" style="color:#2563eb;word-break:break-all">${link}</a></p>
-</div>`;
-  const text = `Merhaba ${name},\n\n${intro}\n\n${link}\n\n${note}`;
-  return { subject, html, text };
 }
 
 async function send(to: string, kind: "verify" | "reset", name: string, token: string) {
