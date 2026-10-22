@@ -16,9 +16,10 @@ import { APP_URL, mail } from "./mail.ts";
 const ORIGINS = ["https://majkasolutions.github.io", "http://localhost:8765", "http://localhost:8766"];
 const SB_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SB_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-// info@majkasolutions.com Turhost (GoDaddy/secureserver) üzerinde; yalnızca şifre gizli anahtar.
+// info@majkasolutions.com Turhost'un kendi e-posta sunucusunda (MX: srvm06.trwww.com; SPF de trwww.com);
+// yalnızca şifre gizli anahtar.
 const SMTP = {
-  host: Deno.env.get("PAYDAY_SMTP_HOST") || "smtpout.secureserver.net",
+  host: Deno.env.get("PAYDAY_SMTP_HOST") || "srvm06.trwww.com",
   port: Number(Deno.env.get("PAYDAY_SMTP_PORT") || "465"),
   user: Deno.env.get("PAYDAY_SMTP_USER") || "info@majkasolutions.com",
   pass: Deno.env.get("PAYDAY_SMTP_PASS") ?? "",
