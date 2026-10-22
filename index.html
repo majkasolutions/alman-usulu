@@ -84,6 +84,13 @@
   .exp .sub{font-size:13px;color:var(--muted)}
   .exp .amt{font-weight:700;text-align:right;white-space:nowrap}
   .exp .amt .mine{display:block;font-size:12px;font-weight:500;color:var(--muted)}
+  .amtcur{gap:6px}
+  .amtcur input{flex:1;min-width:0}
+  .amtcur select{width:auto;flex:0 0 auto;padding-right:10px}
+  .fx{margin-top:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px}
+  .fx .row{gap:8px}
+  .fx input{width:120px;flex:0 0 auto}
+  .fx .note{font-size:13px;color:var(--muted);margin-top:6px}
   .exp.payment .desc::before{content:"↔ ";color:var(--muted)}
   .exp .actions{grid-column:1 / -1;display:flex;gap:8px;justify-content:flex-end;align-items:center}
   .shares{display:flex;flex-direction:column;gap:6px;margin-top:6px}
@@ -208,6 +215,8 @@
     <form class="card hidden" id="newEventForm" style="margin-top:10px">
       <label for="evName">Etkinlik adı</label>
       <input id="evName" type="text" maxlength="60" required placeholder="Cunda tatili, Ev, Kamp…">
+      <label for="evCurrency">Para birimi</label>
+      <select id="evCurrency"></select>
       <label>Katılımcılar <span class="muted" id="newCount"></span></label>
       <div class="chips" id="newUsers"></div>
       <div class="row" style="margin-top:10px">
@@ -269,6 +278,7 @@
       <div class="bal" id="balances"></div>
 
       <h2>Kim kime ne verecek</h2>
+      <div class="muted hidden" id="fxSummary" style="margin:-4px 0 8px"></div>
       <div class="settle" id="settle"></div>
     </div>
 
@@ -294,6 +304,7 @@
       <h2>Etkinlik</h2>
       <div class="card">
         <div class="row"><span class="grow">Adı değiştir</span><button type="button" class="small" id="renameBtn">✎ Düzenle</button></div>
+        <div class="row" style="margin-top:10px"><label for="evCurSel" class="grow" style="margin:0">Para birimi</label><select id="evCurSel" style="width:auto"></select></div>
         <div class="row" style="margin-top:10px"><span class="grow muted">Etkinliği ve tüm kayıtlarını sil</span><button type="button" class="small danger" id="delEventBtn">Sil</button></div>
       </div>
     </div>
@@ -314,9 +325,16 @@
       <label for="desc">Açıklama</label>
       <input id="desc" type="text" maxlength="120" required placeholder="Akşam yemeği, market, benzin…">
       <div class="row fields">
-        <div class="grow"><label for="amount">Tutar (₺)</label>
-          <input id="amount" type="number" inputmode="decimal" step="0.01" min="0.01" required placeholder="0,00"></div>
+        <div class="grow"><label for="amount">Tutar</label>
+          <div class="row amtcur"><input id="amount" type="number" inputmode="decimal" step="0.01" min="0.01" required placeholder="0,00">
+            <select id="expCur" aria-label="Para birimi"></select></div></div>
         <div class="grow"><label for="date">Tarih</label><input id="date" type="date" required></div>
+      </div>
+      <div class="fx hidden" id="fxBox">
+        <div class="row"><label for="fxRate" style="margin:0">1 <span id="fxFrom"></span> =</label>
+          <input id="fxRate" type="number" inputmode="decimal" step="any" min="0" placeholder="kur">
+          <span class="grow" id="fxTo"></span><button type="button" class="link" id="fxRefresh">Güncel kur</button></div>
+        <div class="note" id="fxNote"></div>
       </div>
       <label for="payer">Kim ödedi?</label>
       <select id="payer"></select>
@@ -371,8 +389,11 @@ const MAX_P = 10;
 const TOKENS = ["🎩","🚗","🐕","🚢","👢","🐈","🦖","🛵","🍕","🎸","🚀","🐧","⛵","🧸","🎲","🏎️"];
 
 const $ = (s) => document.querySelector(s);
-const fmt = new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" });
-const money = (n) => fmt.format(n);
+const CURRENCIES = { TRY: "₺ Türk lirası", USD: "$ ABD doları", EUR: "€ Euro", DKK: "kr Danimarka kronu", SEK: "kr İsveç kronu", NOK: "kr Norveç kronu" };
+const CUR_SYM = { TRY: "₺", USD: "$", EUR: "€", DKK: "DKK", SEK: "SEK", NOK: "NOK" };
+const fmts = {};
+const money = (n, cur = ev?.currency || "TRY") => (fmts[cur] ||= new Intl.NumberFormat("tr-TR", { style: "currency", currency: cur })).format(n);
+const curOptions = (sel) => Object.entries(CURRENCIES).map(([k, v]) => `<option value="${k}" ${k === sel ? "selected" : ""}>${v} (${k})</option>`).join("");
 const AY = ["Oca","Şub","Mar","Nis","May","Haz","Tem","Ağu","Eyl","Eki","Kas","Ara"];
 const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const today = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
@@ -456,10 +477,11 @@ function renderHome() {
   $("#events").innerHTML = base.events.length ? base.events.map(e => `
     <div class="card ev" data-open="${e.id}">
       <div class="grow"><div class="name">${esc(e.name)}</div>
-        <div class="muted">${e.participant_count} kişi · ${e.expense_count} kayıt${Number(e.total) ? " · " + money(Number(e.total)) : ""}</div></div>
+        <div class="muted">${e.participant_count} kişi · ${e.expense_count} kayıt${Number(e.total) ? " · " + money(Number(e.total), e.currency || "TRY") : ""}</div></div>
       <span class="arrow">›</span></div>`).join("")
     : `<div class="empty">Henüz etkinlik yok. "+ Yeni" ile oluştur.</div>`;
   if (!base.events.length) $("#newEventForm").classList.remove("hidden");
+  if (!$("#evCurrency").children.length) $("#evCurrency").innerHTML = curOptions("TRY");
   if (!$("#newUsers").children.length) {
     $("#newUsers").innerHTML = base.users.map(u =>
       `<label class="chip on"><input type="checkbox" value="${u.email}" checked>${esc(u.name)}</label>`).join("");
@@ -559,7 +581,7 @@ $("#newEventForm").addEventListener("submit", async (e) => {
   if (ps.length > MAX_P) { $("#newEventErr").textContent = `En fazla ${MAX_P} katılımcı.`; return; }
   const btn = e.target.querySelector("button.primary"); btn.disabled = true;
   try {
-    const id = await rpc("hesap_create_event", { p_name: $("#evName").value.trim(), p_participants: ps });
+    const id = await rpc("hesap_create_event", { p_name: $("#evName").value.trim(), p_participants: ps, p_currency: $("#evCurrency").value });
     $("#evName").value = ""; newGuests = [];
     location.hash = "#e/" + id;
   } catch (err) { $("#newEventErr").textContent = err.message; }
@@ -749,6 +771,16 @@ function renderEvent() {
   if (!ev || !ev.participants) return;
   const me = meP();
   $("#evTitle").textContent = ev.name;
+  const cur = ev.currency || "TRY";
+  $("#evCurSel").innerHTML = curOptions(cur);
+  const fxUsed = ev.expenses.filter(e => e.orig_currency);
+  $("#evCurSel").disabled = fxUsed.length > 0;
+  $("#evCurSel").title = fxUsed.length ? "Farklı para birimiyle girilmiş kayıtlar varken ana birim değiştirilemez" : "";
+  const byCur = {};
+  for (const e of ev.expenses) if (e.kind === "expense") { const c = e.orig_currency || cur; byCur[c] = (byCur[c] || 0) + Number(e.orig_currency ? e.orig_amount : e.amount); }
+  const curs = Object.keys(byCur);
+  $("#fxSummary").classList.toggle("hidden", !fxUsed.length);
+  $("#fxSummary").textContent = fxUsed.length ? `Tutarlar ${cur} cinsinden · harcamalar: ${curs.map(c => money(byCur[c], c)).join(" + ")}` : "";
   const total = ev.expenses.filter(e => e.kind === "expense").reduce((s, e) => s + Math.round(Number(e.amount) * 100), 0);
   $("#evSub").textContent = total
     ? `Toplam ${money(total / 100)} · kişi başı ${money(total / ev.participants.length / 100)} · ${ev.participants.length} kişi`
@@ -802,7 +834,7 @@ function renderEvent() {
     const everyone = e.shares.length === ev.participants.length && e.split_mode === "equal";
     const sub = e.kind === "payment"
       ? `${esc(pname(e.payer))} → ${esc(pname(e.shares[0]?.p))}`
-      : `${esc(pname(e.payer))} ödedi · ${everyone ? "herkes eşit" : e.shares.map(s => `${esc(pname(s.p))} ${money(Number(s.amount))}`).join(", ")}`;
+      : `${esc(pname(e.payer))} ödedi · ${everyone ? "herkes eşit" : e.shares.map(s => `${esc(pname(s.p))} ${s.o != null && e.orig_currency ? money(Number(s.o), e.orig_currency) : money(Number(s.amount))}`).join(", ")}`;
     const actions = pendingDelete === e.id
       ? `<span class="muted">Silinsin mi?</span><button type="button" class="small" data-cancel>Vazgeç</button><button type="button" class="small danger" data-confirm="${e.id}">Evet, sil</button>`
       : `<button type="button" class="small" data-edit="${e.id}">Düzenle</button><button type="button" class="small" data-del="${e.id}">Sil</button>`;
@@ -810,7 +842,7 @@ function renderEvent() {
       <div class="date"><b>${d.getDate()}</b>${AY[d.getMonth()]}</div>
       <div><div class="desc">${esc(e.description)}</div><div class="sub">${sub}</div>
         <div class="sub">${esc(uname(e.created_by))} ekledi${e.updated_at ? ` · ${esc(uname(e.updated_by || e.created_by))} düzenledi` : ""}</div></div>
-      <div class="amt">${money(amt)}<span class="mine">${mine}</span></div>
+      <div class="amt">${e.orig_currency ? `${money(Number(e.orig_amount), e.orig_currency)}<span class="mine">≈ ${money(amt)}</span>` : money(amt)}<span class="mine">${mine}</span></div>
       <div class="actions">${actions}</div></div>`;
   }).join("") : `<div class="empty">Henüz kayıt yok. İlk harcamayı ekle.</div>`;
 
@@ -866,6 +898,11 @@ $("#renameBtn").addEventListener("click", async () => {
   const n = prompt("Etkinliğin yeni adı", ev.name); if (!n || !n.trim() || n.trim() === ev.name) return;
   try { await rpc("hesap_rename_event", { p_event: ev.id, p_name: n.trim() }); await loadEvent(); renderEvent(); } catch (err) { toast(err.message); }
 });
+$("#evCurSel").addEventListener("change", async (e) => {
+  const cur = e.target.value; if (cur === ev.currency) return;
+  try { await rpc("hesap_set_currency", { p_event: ev.id, p_currency: cur }); await loadEvent(); renderEvent(); toast(`Para birimi: ${cur}`); }
+  catch (err) { toast(err.message); e.target.value = ev.currency || "TRY"; }
+});
 $("#delEventBtn").addEventListener("click", async () => {
   if (!pendingDeleteEvent) { pendingDeleteEvent = true; renderEvent(); setTimeout(() => { pendingDeleteEvent = false; if (ev) renderEvent(); }, 5000); return; }
   try { await rpc("hesap_delete_event", { p_event: ev.id }); toast("Etkinlik silindi"); ev = null; location.hash = ""; } catch (err) { toast(err.message); }
@@ -886,6 +923,7 @@ function renderFormOptions(force) {
       return `<label class="chip ${on ? "on" : ""}"><input type="checkbox" value="${p.id}" ${on ? "checked" : ""}>${esc(p.name)}</label>`; }).join("");
     $("#amountRows").innerHTML = ev.participants.map(p => `<div class="row"><span>${esc(p.name)}</span><input type="number" inputmode="decimal" step="0.01" min="0" data-amt="${p.id}" placeholder="0,00"></div>`).join("");
     $("#shareRows").innerHTML = ev.participants.map(p => `<div class="row"><span>${esc(p.name)}</span><span class="calc" data-calc="${p.id}"></span><input type="number" inputmode="numeric" step="1" min="0" data-w="${p.id}" value="1"></div>`).join("");
+    if (!$("#expCur").options.length) $("#expCur").innerHTML = Object.keys(CURRENCIES).map(k => `<option value="${k}">${CUR_SYM[k] === k ? k : `${CUR_SYM[k]} ${k}`}</option>`).join("");
     syncTo();
   }
   updateHints();
@@ -905,29 +943,87 @@ function weightedSplit(total, ws) {
   [...raw].sort((a, b) => b.frac - a.frac).forEach(x => { if (rest > 0) { x.c++; rest--; } });
   return raw.map(x => ({ p: x.p, amount: x.c / 100, w: x.w }));
 }
+// Kayıt başka birimde girilebilir; paylar ve tutar her zaman etkinliğin biriminde saklanır.
+const evCur = () => ev.currency || "TRY";
+const expCur = () => $("#expCur").value || evCur();
+const isFx = () => expCur() !== evCur();
+const fxRate = () => isFx() ? Number($("#fxRate").value) || 0 : 1;
+const origTotal = () => cents($("#amount").value);
+const evTotal = () => Math.round(origTotal() * fxRate());
+function amountModeRows() { return [...$("#amountRows").querySelectorAll("[data-amt]")].map(i => ({ p: i.dataset.amt, o: cents(i.value) })).filter(x => x.o > 0); }
 function currentShares() {
-  const total = cents($("#amount").value);
+  const total = evTotal();
   if (kind === "payment") return [{ p: $("#to").value, amount: total / 100, w: 1 }];
   if (mode === "equal") { const ids = selectedSplit(); return ids.length ? equalSplit(total, ids) : []; }
-  if (mode === "amount") return [...$("#amountRows").querySelectorAll("[data-amt]")].map(i => ({ p: i.dataset.amt, amount: cents(i.value) / 100, w: 1 })).filter(s => s.amount > 0);
+  if (mode === "amount") {
+    const rows = amountModeRows(); if (!rows.length) return [];
+    if (!isFx()) return rows.map(x => ({ p: x.p, amount: x.o / 100, w: 1 }));
+    // her payı çevir, yuvarlama farkını en büyük paya ekle (toplam = çevrilen tutar)
+    const rate = fxRate(), cs = rows.map(x => ({ ...x, c: Math.round(x.o * rate) }));
+    if (rows.reduce((s, x) => s + x.o, 0) === origTotal()) [...cs].sort((a, b) => b.c - a.c)[0].c += total - cs.reduce((s, x) => s + x.c, 0);
+    return cs.map(x => ({ p: x.p, amount: x.c / 100, w: 1, o: x.o / 100 }));
+  }
   const ws = [...$("#shareRows").querySelectorAll("[data-w]")].map(i => ({ p: i.dataset.w, w: Math.max(0, Math.floor(Number(i.value) || 0)) })).filter(x => x.w > 0);
   return ws.length ? weightedSplit(total, ws) : [];
 }
 function updateHints() {
-  const total = cents($("#amount").value);
+  const total = origTotal(), c = expCur();
   const n = selectedSplit().length;
-  $("#splitHint").textContent = n && total > 0 ? `· kişi başı ${money(total / n / 100)}` : "";
+  const conv = n && isFx() && fxRate() > 0 ? ` (≈ ${money(evTotal() / n / 100)})` : "";
+  $("#splitHint").textContent = n && total > 0 ? `· kişi başı ${money(total / n / 100, c)}${conv}` : "";
   if (mode === "amount") {
     const sum = [...$("#amountRows").querySelectorAll("[data-amt]")].reduce((s, i) => s + cents(i.value), 0);
     const diff = total - sum;
     $("#amountRemain").innerHTML = diff === 0 && total > 0 ? `<span class="pos">Tamam, paylar tutara eşit</span>`
-      : diff > 0 ? `Dağıtılmamış: <b>${money(diff / 100)}</b>` : `<span class="neg">Fazla: ${money(-diff / 100)}</span>`;
+      : diff > 0 ? `Dağıtılmamış: <b>${money(diff / 100, c)}</b>` : `<span class="neg">Fazla: ${money(-diff / 100, c)}</span>`;
   }
+  updateFx();
   if (mode === "shares") {
     const sh = currentShares();
     $("#shareRows").querySelectorAll("[data-calc]").forEach(el => { const s = sh.find(x => x.p === el.dataset.calc); el.textContent = s ? money(s.amount) : "—"; });
   }
 }
+// ---- kur: Avrupa Merkez Bankası günlük kurları (frankfurter.dev), elle değiştirilebilir
+let fxManual = false, fxInfo = "", fxReq = 0;
+const fxCache = {};
+async function getRate(from, to, date) {
+  const day = date && date < today() ? date : "latest", key = `${from}>${to}@${day}`;
+  if (!fxCache[key]) fxCache[key] = fetch(`https://api.frankfurter.dev/v1/${day}?base=${from}&symbols=${to}`)
+    .then(r => r.ok ? r.json() : Promise.reject(new Error("kur alınamadı")))
+    .then(d => { const v = d?.rates?.[to]; if (!(v > 0)) throw new Error("kur yok"); return { rate: v, date: d.date }; })
+    .catch(err => { delete fxCache[key]; throw err; });
+  return fxCache[key];
+}
+async function autoRate(force) {
+  if (!ev || !isFx() || (fxManual && !force)) return;
+  const from = expCur(), to = evCur(), date = $("#date").value, req = ++fxReq;
+  fxInfo = "Kur alınıyor…"; updateFx();
+  try {
+    const { rate, date: d } = await getRate(from, to, date);
+    if (req !== fxReq) return;
+    fxManual = false;
+    $("#fxRate").value = Number(rate.toPrecision(6));
+    fxInfo = `Merkez Bankası (ECB) kuru · ${d.split("-").reverse().join(".")}`;
+  } catch {
+    if (req !== fxReq) return;
+    fxInfo = "Kur otomatik alınamadı, elle gir.";
+  }
+  updateHints();
+}
+function updateFx() {
+  const on = !!ev && isFx();
+  $("#fxBox").classList.toggle("hidden", !on);
+  if (!on) return;
+  $("#fxFrom").textContent = expCur(); $("#fxTo").textContent = evCur();
+  const conv = fxRate() > 0 && origTotal() > 0 ? `${money(origTotal() / 100, expCur())} ≈ <b>${money(evTotal() / 100)}</b> · ` : "";
+  $("#fxNote").innerHTML = conv + esc(fxInfo);
+}
+$("#expCur").addEventListener("change", () => { fxManual = false; $("#fxRate").value = ""; fxInfo = ""; updateHints(); autoRate(); });
+$("#date").addEventListener("change", () => autoRate());
+$("#fxRate").addEventListener("input", () => { fxManual = true; fxReq++; fxInfo = "Kur elle girildi"; updateHints(); });
+$("#fxRefresh").addEventListener("click", () => autoRate(true));
+const lastCurKey = () => `payday:cur:${ev?.id}`;
+
 function syncTo() {
   const payer = $("#payer").value;
   [...$("#to").options].forEach(o => { o.disabled = o.value === payer; });
@@ -964,14 +1060,18 @@ function resetForm() {
   $("#saveBtn").textContent = "Kaydet"; $("#expErr").textContent = "";
   $("#desc").value = ""; $("#amount").value = ""; $("#date").value = today();
   setKind("expense"); setMode("equal");
+  fxManual = false; fxInfo = ""; fxReq++; $("#fxRate").value = "";
   if (ev?.participants) {
     renderFormOptions(true);
+    let last = null; try { last = localStorage.getItem(lastCurKey()); } catch {}
+    $("#expCur").value = CURRENCIES[last] ? last : evCur();
     $("#split").querySelectorAll("input").forEach(i => { i.checked = true; i.closest(".chip").classList.add("on"); });
     $("#amountRows").querySelectorAll("input").forEach(i => i.value = "");
     $("#shareRows").querySelectorAll("input").forEach(i => i.value = "1");
     $("#payer").value = meP()?.id || ev.participants[0].id; syncTo();
   }
   updateHints();
+  autoRate();
 }
 function startEdit(id) {
   const e = ev.expenses.find(x => x.id === id); if (!e) return;
@@ -979,7 +1079,12 @@ function startEdit(id) {
   editing = id;
   $("#formTitle").textContent = "Kaydı düzenle"; openSheet();
   $("#saveBtn").textContent = "Değişiklikleri kaydet";
-  $("#desc").value = e.description; $("#amount").value = Number(e.amount); $("#date").value = e.spent_on;
+  $("#desc").value = e.description; $("#date").value = e.spent_on;
+  fxReq++;
+  if (e.orig_currency) {
+    $("#expCur").value = e.orig_currency; $("#amount").value = Number(e.orig_amount);
+    $("#fxRate").value = Number(e.fx_rate); fxManual = true; fxInfo = "Kayıttaki kur";
+  } else { $("#expCur").value = evCur(); $("#amount").value = Number(e.amount); }
   $("#payer").value = e.payer; syncTo();
   setKind(e.kind);
   if (e.kind === "payment") { $("#to").value = e.shares[0]?.p; }
@@ -987,7 +1092,7 @@ function startEdit(id) {
     setMode(e.split_mode);
     const inS = new Set(e.shares.map(s => s.p));
     $("#split").querySelectorAll("input").forEach(i => { i.checked = inS.has(i.value); i.closest(".chip").classList.toggle("on", i.checked); });
-    $("#amountRows").querySelectorAll("[data-amt]").forEach(i => { const s = e.shares.find(x => x.p === i.dataset.amt); i.value = s ? Number(s.amount) : ""; });
+    $("#amountRows").querySelectorAll("[data-amt]").forEach(i => { const s = e.shares.find(x => x.p === i.dataset.amt); i.value = s ? Number(s.o ?? s.amount) : ""; });
     $("#shareRows").querySelectorAll("[data-w]").forEach(i => { const s = e.shares.find(x => x.p === i.dataset.w); i.value = s ? (s.w ?? 1) : 0; });
   }
   updateHints();
@@ -998,10 +1103,17 @@ $("#cancelEdit").addEventListener("click", () => { resetForm(); closeSheet(); })
 $("#expForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   $("#expErr").textContent = "";
-  const total = cents($("#amount").value);
-  if (total <= 0) { $("#expErr").textContent = "Tutar gir."; return; }
+  const orig = origTotal(), cur = expCur();
+  if (orig <= 0) { $("#expErr").textContent = "Tutar gir."; return; }
+  if (isFx() && !(fxRate() > 0)) { $("#expErr").textContent = `Kuru gir: 1 ${cur} kaç ${evCur()}?`; return; }
+  const total = evTotal();
+  if (total <= 0) { $("#expErr").textContent = "Çevrilen tutar sıfır çıktı, kuru kontrol et."; return; }
   const shares = currentShares();
   if (!shares.length) { $("#expErr").textContent = "En az bir kişi seç."; return; }
+  if (kind === "expense" && mode === "amount") {
+    const osum = amountModeRows().reduce((s, x) => s + x.o, 0);
+    if (osum !== orig) { $("#expErr").textContent = `Paylar toplamı (${money(osum / 100, cur)}) tutara (${money(orig / 100, cur)}) eşit değil.`; return; }
+  }
   const sum = shares.reduce((s, x) => s + cents(x.amount), 0);
   if (sum !== total) { $("#expErr").textContent = `Paylar toplamı (${money(sum / 100)}) tutara (${money(total / 100)}) eşit değil.`; return; }
   const btn = $("#saveBtn"); btn.disabled = true;
@@ -1010,7 +1122,9 @@ $("#expForm").addEventListener("submit", async (e) => {
       p_id: editing, p_event: ev.id, p_kind: kind, p_payer: $("#payer").value,
       p_amount: total / 100, p_description: $("#desc").value.trim() || "Borç ödemesi",
       p_spent_on: $("#date").value, p_split_mode: kind === "payment" ? "equal" : mode, p_shares: shares,
+      p_orig_currency: cur, p_orig_amount: orig / 100, p_fx_rate: isFx() ? fxRate() : null,
     });
+    try { localStorage.setItem(lastCurKey(), cur); } catch {}
     toast(editing ? "Güncellendi" : "Kaydedildi");
     resetForm(); closeSheet();
     await loadEvent(); renderEvent();
