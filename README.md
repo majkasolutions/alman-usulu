@@ -14,6 +14,7 @@ supabase db query --linked -f seed.local.sql
 supabase db query --linked -f schema_v2.sql   # etkinlikler, katılımcılar, bölüşme, düzenleme
 # ... schema_v3–v5 sırayla
 supabase db query --linked -f schema_v6.sql   # etkinlik başına para birimi (TRY/USD/EUR/DKK/SEK/NOK)
+supabase db query --linked -f schema_v7.sql   # aynı etkinlikte farklı birimlerle kayıt (kur kayda sabitlenir)
 ```
 
 ## Özellikler (v2)
@@ -22,3 +23,9 @@ supabase db query --linked -f schema_v6.sql   # etkinlik başına para birimi (T
 - Bölüşme: eşit / tutara göre / paya göre. Borç ödemesi kaydı.
 - Kayıt düzenleme ve silme; "kim kime ne verecek" en az transferle hesaplanır.
 - Logo/ikonlar `icons/` (SVG kaynak `logo.svg`, iOS ana ekran `apple-touch-icon.png`, manifest).
+
+## Para birimleri (v6–v7)
+
+- Her etkinliğin bir **ana birimi** var (TRY, USD, EUR, DKK, SEK, NOK); bakiye ve "kim kime ne verecek" bu birimde hesaplanır.
+- Kayıtlar istenen birimde girilebilir. Kur, Avrupa Merkez Bankası'nın kayıt tarihindeki günlük kurundan otomatik gelir ([frankfurter.dev](https://frankfurter.dev)); elle değiştirilebilir. Kur kayda sabitlenir, sonradan değişmez.
+- Kayıtta girilen tutar ve ana birim karşılığı birlikte görünür ("DKK 300,00 · ≈ €40,20"). Başka birimde kayıt varken ana birim değiştirilemez.
