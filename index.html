@@ -65,6 +65,15 @@
   .chip.on{background:var(--accent);color:var(--accent-ink);border-color:transparent}
   .chip.static{cursor:default}
   .chip .x{margin-left:2px;opacity:.6}
+  .authtabs{margin-bottom:12px}
+  .row button.small.primary{width:auto;margin-top:0}
+  .info{font-size:14px;margin-top:10px;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--accent) 10%,transparent)}
+  .info:empty{display:none}
+  .people .row{padding:8px 0;border-bottom:1px solid var(--line);gap:8px}
+  .people .row:last-child{border-bottom:0}
+  .people .who{display:flex;flex-direction:column;min-width:0}
+  .people .who .muted{font-size:12px;overflow:hidden;text-overflow:ellipsis}
+  .badge{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
   .bal{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .bal .card{padding:12px}
   .bal .name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -192,14 +201,50 @@
       <h1>Payday</h1>
       <p class="muted">Kim ne ödedi, kim kime borçlu — arkadaş defteri.</p>
     </div>
-    <form class="card" id="loginForm" autocomplete="on">
+    <div class="tabs seg authtabs" id="authTabs">
+      <button type="button" data-auth="login" class="on">Giriş</button>
+      <button type="button" data-auth="register">Kayıt ol</button>
+    </div>
+    <form class="card" id="loginForm" autocomplete="on" data-auth="login">
       <label for="email">E-posta</label>
-      <input id="email" type="email" inputmode="email" autocapitalize="off" required placeholder="ad@gmail.com">
+      <input id="email" type="email" inputmode="email" autocapitalize="off" autocomplete="username" required placeholder="ad@gmail.com">
       <label for="pass">Şifre</label>
-      <input id="pass" type="password" required>
+      <input id="pass" type="password" autocomplete="current-password" required>
       <button class="primary" type="submit">Giriş</button>
+      <div class="row" style="justify-content:space-between;margin-top:6px">
+        <button type="button" class="link" id="forgotBtn">Şifremi unuttum</button>
+        <button type="button" class="link hidden" id="resendBtn">Onay e-postasını tekrar gönder</button>
+      </div>
       <div class="err" id="loginErr"></div>
     </form>
+    <form class="card hidden" id="registerForm" autocomplete="on" data-auth="register">
+      <label for="regName">Adın</label>
+      <input id="regName" type="text" maxlength="40" autocomplete="nickname" required placeholder="Arkadaşların seni bu adla görür">
+      <label for="regEmail">E-posta</label>
+      <input id="regEmail" type="email" inputmode="email" autocapitalize="off" autocomplete="username" required placeholder="ad@gmail.com">
+      <label for="regPass">Şifre <span class="muted">(en az 8 karakter)</span></label>
+      <input id="regPass" type="password" minlength="8" autocomplete="new-password" required>
+      <input id="regWebsite" type="text" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
+      <button class="primary" type="submit">Kayıt ol</button>
+      <div class="muted" style="font-size:13px;margin-top:8px">Kayıttan sonra e-postana bir onay linki gelir; onaylayınca giriş yapabilirsin.</div>
+      <div class="err" id="regErr"></div>
+    </form>
+    <form class="card hidden" id="forgotForm" data-auth="forgot">
+      <b>Şifre sıfırlama</b>
+      <label for="forgotEmail">E-posta</label>
+      <input id="forgotEmail" type="email" inputmode="email" autocapitalize="off" required>
+      <button class="primary" type="submit">Sıfırlama linki gönder</button>
+      <button type="button" class="link" data-goauth="login" style="margin-top:6px">← Girişe dön</button>
+      <div class="err" id="forgotErr"></div>
+    </form>
+    <form class="card hidden" id="resetForm" data-auth="reset">
+      <b>Yeni şifre belirle</b>
+      <label for="resetPass">Yeni şifre <span class="muted">(en az 8 karakter)</span></label>
+      <input id="resetPass" type="password" minlength="8" autocomplete="new-password" required>
+      <button class="primary" type="submit">Şifreyi kaydet</button>
+      <div class="err" id="resetErr"></div>
+    </form>
+    <div class="info" id="authInfo"></div>
   </section>
 
   <!-- ============ Etkinlikler -->
@@ -208,6 +253,11 @@
     <div class="row">
       <div class="brand grow"><img src="icons/logo.svg" alt=""><div><h1>Payday</h1><div class="muted" id="who"></div></div></div>
       <button class="small" id="logoutBtn">Çıkış</button>
+    </div>
+
+    <div id="invitesBox" class="hidden">
+      <h2>Davetler</h2>
+      <div class="list" id="invites"></div>
     </div>
 
     <h2>Etkinlikler <button type="button" class="link" id="newEventToggle">+ Yeni</button></h2>
@@ -219,7 +269,7 @@
       <select id="evCurrency"></select>
       <label>Katılımcılar <span class="muted" id="newCount"></span></label>
       <div class="chips" id="newUsers"></div>
-      <div class="muted" style="font-size:13px;margin-top:6px">🔒 Etkinliği yalnızca seçtiğin kişiler (ve sen) görebilir.</div>
+      <div class="muted" style="font-size:13px;margin-top:6px">🔒 Seçtiğin arkadaşlarına davet gider; kabul edince etkinliği görürler. Başka kimse göremez.</div>
       <div class="row" style="margin-top:10px">
         <input id="newGuest" type="text" maxlength="40" placeholder="Misafir adı (giriş yapmayan biri)" class="grow">
         <button type="button" class="small" id="newGuestAdd">Ekle</button>
@@ -228,6 +278,17 @@
       <button class="primary" type="submit">Etkinliği oluştur</button>
       <div class="err" id="newEventErr"></div>
     </form>
+
+    <h2>Arkadaşlar <span class="muted" id="friendCount"></span></h2>
+    <div class="card">
+      <div class="people" id="friendReqs"></div>
+      <div class="people" id="friends"></div>
+      <form id="friendForm" class="row" style="margin-top:10px">
+        <input id="friendEmail" type="email" inputmode="email" autocapitalize="off" required placeholder="Arkadaşının e-postası" class="grow">
+        <button class="small" type="submit">İstek gönder</button>
+      </form>
+      <div class="err" id="friendErr"></div>
+    </div>
 
     <h2>Profilim</h2>
     <div class="card prof">
@@ -289,11 +350,11 @@
 
     <div data-tab="kisiler" class="hidden">
       <h2>Katılımcılar <span class="muted" id="memberCount"></span></h2>
-      <div class="muted" style="font-size:13px;margin:-4px 0 8px">🔒 Bu etkinliği yalnızca buradaki kişiler görür; eklediğin kişi de görmeye başlar.</div>
+      <div class="muted" style="font-size:13px;margin:-4px 0 8px">🔒 Bu etkinliği yalnızca buradaki kişiler görür. Arkadaşını eklersen davet gider, kabul edince görür.</div>
       <div class="card">
         <div class="members" id="members"></div>
         <div id="addMember">
-          <label>Katılımcı ekle</label>
+          <label>Arkadaşını davet et ya da misafir ekle</label>
           <div class="chips" id="addUsers"></div>
           <div class="row" style="margin-top:10px">
             <input id="addGuest" type="text" maxlength="40" placeholder="Misafir adı" class="grow">
@@ -418,6 +479,25 @@ async function rpc(fn, args) {
   if (!r.ok) throw new Error(body?.message || body?.hint || `Hata (${r.status})`);
   return body;
 }
+async function rpcAnon(fn, args) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+    body: JSON.stringify(args),
+  });
+  const body = await r.json().catch(() => null);
+  if (!r.ok) throw new Error(body?.message || body?.hint || `Hata (${r.status})`);
+  return body;
+}
+// kayıt / onay e-postası / şifre sıfırlama e-postası: payday-auth Edge Function'ı
+async function authFn(body) {
+  const r = await fetch(`${SUPABASE_URL}/functions/v1/payday-auth`, {
+    method: "POST", headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY }, body: JSON.stringify(body),
+  });
+  const d = await r.json().catch(() => null);
+  if (!r.ok || !d?.ok) throw new Error(d?.error && d.error.length > 8 ? d.error : `Şu an yapılamadı (${r.status}), biraz sonra tekrar dene.`);
+  return d;
+}
 function toast(msg) {
   const t = $("#toast"); t.textContent = msg; t.classList.add("show");
   setTimeout(() => t.classList.remove("show"), 1800);
@@ -428,16 +508,85 @@ function show(id) { for (const s of ["login", "home", "event"]) $("#" + s).class
 function loadSession() { try { session = JSON.parse(localStorage.getItem(SESSION_KEY)); } catch { session = null; } }
 function saveSession() { try { session ? localStorage.setItem(SESSION_KEY, JSON.stringify(session)) : localStorage.removeItem(SESSION_KEY); } catch {} }
 
+let resetToken = null;
+function authMode(m, info) {
+  for (const f of ["loginForm", "registerForm", "forgotForm", "resetForm"]) $("#" + f).classList.toggle("hidden", $("#" + f).dataset.auth !== m);
+  $("#authTabs").classList.toggle("hidden", m === "forgot" || m === "reset");
+  $("#authTabs").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.auth === m));
+  $("#authInfo").textContent = info || "";
+  document.querySelectorAll("#login .err").forEach(e => e.textContent = "");
+}
+$("#authTabs").addEventListener("click", (e) => { const b = e.target.closest("[data-auth]"); if (b) authMode(b.dataset.auth); });
+document.querySelectorAll("[data-goauth]").forEach(b => b.addEventListener("click", () => authMode(b.dataset.goauth)));
+$("#forgotBtn").addEventListener("click", () => { $("#forgotEmail").value = $("#email").value; authMode("forgot"); });
+$("#resendBtn").addEventListener("click", async () => {
+  const btn = $("#resendBtn"); btn.disabled = true;
+  try { const d = await authFn({ action: "resend", email: $("#email").value.trim().toLowerCase() });
+    $("#authInfo").textContent = d.mail ? "Onay e-postası tekrar gönderildi. Gelen kutunu (ve spam klasörünü) kontrol et." : "E-posta şu an gönderilemedi, biraz sonra tekrar dene."; }
+  catch (err) { $("#loginErr").textContent = err.message; }
+  finally { btn.disabled = false; }
+});
+$("#registerForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  $("#regErr").textContent = "";
+  const btn = e.target.querySelector("button.primary"); btn.disabled = true;
+  const email = $("#regEmail").value.trim().toLowerCase();
+  try {
+    const d = await authFn({ action: "register", name: $("#regName").value.trim(), email, password: $("#regPass").value, website: $("#regWebsite").value });
+    $("#email").value = email; $("#pass").value = ""; $("#regPass").value = "";
+    authMode("login", d.mail
+      ? `Hesabın oluşturuldu. ${email} adresine bir onay linki gönderdik; linke tıkladıktan sonra giriş yapabilirsin.`
+      : "Hesabın oluşturuldu ama onay e-postası şu an gönderilemedi. Biraz sonra giriş yapmayı deneyip \"Onay e-postasını tekrar gönder\"e bas.");
+  } catch (err) { $("#regErr").textContent = err.message; }
+  finally { btn.disabled = false; }
+});
+$("#forgotForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  $("#forgotErr").textContent = "";
+  const btn = e.target.querySelector("button.primary"); btn.disabled = true;
+  try {
+    const d = await authFn({ action: "forgot", email: $("#forgotEmail").value.trim().toLowerCase() });
+    authMode("login", d.mail ? "Bu e-postayla bir hesap varsa şifre sıfırlama linki gönderildi (1 saat geçerli)." : "E-posta şu an gönderilemedi, biraz sonra tekrar dene.");
+  } catch (err) { $("#forgotErr").textContent = err.message; }
+  finally { btn.disabled = false; }
+});
+$("#resetForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  $("#resetErr").textContent = "";
+  const btn = e.target.querySelector("button.primary"); btn.disabled = true;
+  try {
+    const email = await rpcAnon("hesap_reset_password", { p_token: resetToken, p_new_pass: $("#resetPass").value });
+    resetToken = null; $("#resetPass").value = ""; $("#email").value = email;
+    authMode("login", "Şifren değişti, yeni şifrenle giriş yapabilirsin.");
+  } catch (err) { $("#resetErr").textContent = err.message; }
+  finally { btn.disabled = false; }
+});
+// e-postadaki linkler: #verify/<token>, #reset/<token>
+async function authLink() {
+  const m = location.hash.match(/^#(verify|reset)\/([0-9a-f]{20,})$/);
+  if (!m) return false;
+  history.replaceState(null, "", location.pathname + location.search);
+  session = null; saveSession(); show("login");
+  if (m[1] === "reset") { resetToken = m[2]; authMode("reset"); return true; }
+  authMode("login", "E-postan onaylanıyor…");
+  try { const email = await rpcAnon("hesap_verify", { p_token: m[2] }); $("#email").value = email; authMode("login", "E-postan onaylandı 🎉 Şimdi giriş yapabilirsin."); }
+  catch (err) { authMode("login"); $("#loginErr").textContent = err.message; }
+  return true;
+}
+
 $("#loginForm").addEventListener("submit", async (e) => {
   e.preventDefault();
-  $("#loginErr").textContent = "";
+  $("#loginErr").textContent = ""; $("#authInfo").textContent = ""; $("#resendBtn").classList.add("hidden");
   const btn = e.target.querySelector("button"); btn.disabled = true;
   try {
     session = { email: $("#email").value.trim().toLowerCase(), pass: $("#pass").value };
     await loadHome();
     saveSession();
     route();
-  } catch (err) { session = null; $("#loginErr").textContent = err.message; }
+  } catch (err) {
+    session = null; $("#loginErr").textContent = err.message;
+    if (/onaylanmad/.test(err.message)) $("#resendBtn").classList.remove("hidden");
+  }
   finally { btn.disabled = false; }
 });
 $("#logoutBtn").addEventListener("click", () => {
@@ -446,7 +595,8 @@ $("#logoutBtn").addEventListener("click", () => {
 });
 
 // ---------------------------------------------------------------- yönlendirme
-function route() {
+async function route() {
+  if (await authLink()) return;
   if (!session) { show("login"); return; }
   const m = location.hash.match(/^#e\/([0-9a-f-]{36})$/);
   if (m) openEvent(m[1]); else { loadHome().then(renderHome).catch(e => toast(e.message)); show("home"); }
@@ -484,11 +634,16 @@ function renderHome() {
     : `<div class="empty">Görebildiğin etkinlik yok. "+ Yeni" ile oluştur ya da birinin seni eklemesini bekle.</div>`;
   if (!base.events.length) $("#newEventForm").classList.remove("hidden");
   if (!$("#evCurrency").children.length) $("#evCurrency").innerHTML = curOptions("TRY");
-  if (!$("#newUsers").children.length) {
-    $("#newUsers").innerHTML = base.users.map(u =>
-      `<label class="chip on"><input type="checkbox" value="${u.email}" checked>${esc(u.name)}</label>`).join("");
-  }
+  // yeni etkinlik: sen + arkadaşların (seçimler korunur)
+  const picked = new Set([...$("#newUsers").querySelectorAll("input:checked")].map(i => i.value));
+  const first = !$("#newUsers").children.length;
+  $("#newUsers").innerHTML = base.users.filter(u => u.email === base.me || u.friend).map(u => {
+    const on = u.email === base.me ? (first || picked.has(u.email)) : picked.has(u.email);
+    return `<label class="chip ${on ? "on" : ""}"><input type="checkbox" value="${u.email}" ${on ? "checked" : ""}>${esc(u.email === base.me ? `${u.name} (sen)` : u.name)}</label>`; }).join("")
+    + (base.users.some(u => u.friend) ? "" : `<span class="muted" style="font-size:13px">Davet etmek için önce aşağıdan arkadaş ekle.</span>`);
   renderNewGuests();
+  renderInvites();
+  renderFriends();
   renderTokenCard();
   renderBank();
   maybeTokenModal();
@@ -559,6 +714,62 @@ $("#tokenGrid").addEventListener("click", async (e) => {
 });
 $("#events").addEventListener("click", (e) => { const c = e.target.closest("[data-open]"); if (c) location.hash = "#e/" + c.dataset.open; });
 $("#newUsers").addEventListener("change", (e) => { e.target.closest(".chip").classList.toggle("on", e.target.checked); renderNewGuests(); });
+function renderInvites() {
+  const inv = base.invites || [];
+  $("#invitesBox").classList.toggle("hidden", !inv.length);
+  $("#invites").innerHTML = inv.map(i => `<div class="card row">
+    <div class="grow"><b>${esc(i.name)}</b><div class="muted" style="font-size:13px">${esc(i.by_name || i.by || "Biri")} seni davet etti · ${i.participant_count} kişi</div></div>
+    <button type="button" class="small" data-inv="${i.event}" data-ok="0">Reddet</button>
+    <button type="button" class="small primary" data-inv="${i.event}" data-ok="1">Katıl</button></div>`).join("");
+}
+$("#invites").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-inv]"); if (!b) return;
+  const ok = b.dataset.ok === "1";
+  if (!ok && !confirm("Daveti reddedersen etkinliği göremezsin. Emin misin?")) return;
+  b.disabled = true;
+  try {
+    await rpc("hesap_invite_respond", { p_event: b.dataset.inv, p_accept: ok });
+    if (ok) { toast("Etkinliğe katıldın"); location.hash = "#e/" + b.dataset.inv; }
+    else { toast("Davet reddedildi"); await loadHome(); renderHome(); }
+  } catch (err) { toast(err.message); b.disabled = false; }
+});
+function renderFriends() {
+  const others = base.users.filter(u => u.email !== base.me);
+  const friends = others.filter(u => u.friend), inc = others.filter(u => u.req === "in"), out = others.filter(u => u.req === "out");
+  $("#friendCount").textContent = friends.length ? `(${friends.length})` : "";
+  const who = (u) => `<div class="who grow"><b>${esc(u.name)}</b><span class="muted">${esc(u.email)}</span></div>`;
+  $("#friendReqs").innerHTML = inc.map(u => `<div class="row">${who(u)}<span class="badge">istek</span>
+      <button type="button" class="small" data-fr="${u.email}" data-act="no">Reddet</button>
+      <button type="button" class="small primary" data-fr="${u.email}" data-act="yes">Kabul</button></div>`).join("")
+    + out.map(u => `<div class="row">${who(u)}<span class="badge">bekliyor</span>
+      <button type="button" class="link" data-fr="${u.email}" data-act="rm">Geri al</button></div>`).join("");
+  $("#friends").innerHTML = friends.length ? friends.map(u => `<div class="row">${who(u)}
+      <button type="button" class="link" data-fr="${u.email}" data-act="rm" data-confirm-rm="${esc(u.name)}">Çıkar</button></div>`).join("")
+    : (inc.length || out.length ? "" : `<div class="muted" style="font-size:14px">Henüz arkadaşın yok. Arkadaşının Payday'e kayıtlı e-postasını yazıp istek gönder; kabul edince etkinliklere davet edebilirsin.</div>`);
+}
+$("#friendForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  $("#friendErr").textContent = "";
+  const btn = e.target.querySelector("button"); btn.disabled = true;
+  try {
+    const st = await rpc("hesap_friend_request", { p_target: $("#friendEmail").value.trim().toLowerCase() });
+    $("#friendEmail").value = "";
+    toast(st === "accepted" ? "Artık arkadaşsınız" : "İstek gönderildi");
+    await loadHome(); renderHome();
+  } catch (err) { $("#friendErr").textContent = err.message; }
+  finally { btn.disabled = false; }
+});
+document.querySelector(".people#friendReqs").parentElement.addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-fr]"); if (!b) return;
+  if (b.dataset.confirmRm && !confirm(`${b.dataset.confirmRm} arkadaşlıktan çıkarılsın mı? Ortak etkinlikleriniz etkilenmez.`)) return;
+  b.disabled = true;
+  try {
+    if (b.dataset.act === "rm") await rpc("hesap_friend_remove", { p_other: b.dataset.fr });
+    else await rpc("hesap_friend_respond", { p_other: b.dataset.fr, p_accept: b.dataset.act === "yes" });
+    if (b.dataset.act === "yes") toast("Artık arkadaşsınız");
+    await loadHome(); renderHome();
+  } catch (err) { $("#friendErr").textContent = err.message; b.disabled = false; }
+});
 function newParticipants() {
   const users = [...$("#newUsers").querySelectorAll("input:checked")].map(i => ({ name: uname(i.value), email: i.value }));
   return users.concat(newGuests.map(n => ({ name: n })));
@@ -850,14 +1061,16 @@ function renderEvent() {
 
   // katılımcılar
   $("#memberCount").textContent = `(${ev.participants.length}/${MAX_P})`;
-  $("#members").innerHTML = ev.participants.map(p => `<div class="row"><span class="grow">${esc(p.name)}${p.email ? ` <span class="muted">${esc(p.email)}</span>` : ' <span class="muted">misafir</span>'}</span>
-    <button type="button" class="small" data-rmp="${p.id}">Çıkar</button></div>`).join("");
+  $("#members").innerHTML = ev.participants.map(p => `<div class="row"><span class="grow">${esc(p.name)}${p.email ? ` <span class="muted">${esc(p.email)}</span>` : ' <span class="muted">misafir</span>'}${p.status === "invited" ? ' <span class="badge">davet bekliyor</span>' : ""}</span>
+    <button type="button" class="small" data-rmp="${p.id}">${p.status === "invited" ? "Daveti geri al" : "Çıkar"}</button></div>`).join("");
   const full = ev.participants.length >= MAX_P;
   $("#addMember").classList.toggle("hidden", full);
   $("#memberErr").textContent = full ? `Katılımcı sınırı (${MAX_P}) doldu.` : "";
   const inEv = new Set(ev.participants.map(p => p.email).filter(Boolean));
-  $("#addUsers").innerHTML = base.users.filter(u => !inEv.has(u.email)).map(u =>
-    `<button type="button" class="chip" data-addu="${u.email}">+ ${esc(u.name)}</button>`).join("") || `<span class="muted">Tüm hesaplar ekli; misafir ekleyebilirsin.</span>`;
+  const users = ev.users || base?.users || [];
+  $("#addUsers").innerHTML = users.filter(u => u.friend && !inEv.has(u.email)).map(u =>
+    `<button type="button" class="chip" data-addu="${u.email}">+ ${esc(u.name)}</button>`).join("")
+    || `<span class="muted" style="font-size:13px">Davet edilebilecek arkadaş yok (arkadaş eklemek için ana sayfaya dön). Misafir ekleyebilirsin.</span>`;
 
   $("#delEventBtn").textContent = pendingDeleteEvent ? "Evet, hepsini sil" : "Sil";
 }
@@ -885,7 +1098,7 @@ async function addParticipant(name, email) {
   $("#memberErr").textContent = "";
   try {
     await rpc("hesap_add_participant", { p_event: ev.id, p_name: name, p_user_email: email });
-    $("#addGuest").value = ""; toast(`${name} eklendi`); await loadEvent(); renderFormOptions(true); renderEvent();
+    $("#addGuest").value = ""; toast(email ? `${name} davet edildi; kabul edince etkinliği görecek` : `${name} eklendi`); await loadEvent(); renderFormOptions(true); renderEvent();
   } catch (err) { $("#memberErr").textContent = err.message.includes("unique") ? "Bu ad zaten var." : err.message; }
 }
 $("#members").addEventListener("click", async (e) => {
@@ -1139,7 +1352,8 @@ $("#expForm").addEventListener("submit", async (e) => {
 
 // ---------------------------------------------------------------- başlat
 loadSession();
-if (session) {
+if (/^#(verify|reset)\//.test(location.hash)) route();
+else if (session) {
   loadHome().then(route).catch(() => { session = null; saveSession(); show("login"); });
 } else show("login");
 </script>
