@@ -16,6 +16,8 @@ supabase db query --linked -f schema_v2.sql   # etkinlikler, katılımcılar, b�
 supabase db query --linked -f schema_v6.sql   # etkinlik başına para birimi (TRY/USD/EUR/DKK/SEK/NOK)
 supabase db query --linked -f schema_v7.sql   # aynı etkinlikte farklı birimlerle kayıt (kur kayda sabitlenir)
 supabase db query --linked -f schema_v8.sql   # etkinliği yalnızca katılımcıları ve oluşturan görür
+supabase db query --linked -f schema_v9.sql   # kayıt + e-posta onayı, arkadaşlık, etkinlik daveti
+supabase functions deploy payday-auth --no-verify-jwt
 ```
 
 ## Özellikler (v2)
