@@ -40,20 +40,14 @@ begin
   );
 end $$;
 
-drop function if exists public.hesap_create_event(text, text, text, jsonb);
-create or replace function public.hesap_create_event(p_email text, p_pass text, p_name text, p_participants jsonb, p_currency text default 'TRY')
+-- Eski 4 parametreli hesap_create_event yerinde kalır (eski arayüz çalışmaya devam eder);
+-- p_currency alan sürüm onu çağırıp birimi ayarlar. Geçersiz birim kısıtlamaya takılır, etkinlik de oluşmaz.
+create or replace function public.hesap_create_event(p_email text, p_pass text, p_name text, p_participants jsonb, p_currency text)
 returns uuid language plpgsql security definer set search_path = hesap, extensions, public as $$
-declare me text; ev uuid; it jsonb; i int := 0;
+declare ev uuid;
 begin
-  me := hesap.check_login(p_email, p_pass);
-  if jsonb_array_length(coalesce(p_participants, '[]'::jsonb)) < 1 then raise exception 'en az bir katılımcı gerekli'; end if;
-  if jsonb_array_length(p_participants) > 10 then raise exception 'en fazla 10 katılımcı'; end if;
-  insert into hesap.events(name, created_by, currency) values (trim(p_name), me, coalesce(nullif(p_currency, ''), 'TRY')) returning id into ev;
-  for it in select * from jsonb_array_elements(p_participants) loop
-    i := i + 1;
-    insert into hesap.participants(event_id, name, user_email, sort)
-      values (ev, trim(it->>'name'), nullif(it->>'email',''), i);
-  end loop;
+  ev := public.hesap_create_event(p_email, p_pass, p_name, p_participants);
+  update hesap.events set currency = coalesce(nullif(p_currency, ''), 'TRY') where id = ev;
   return ev;
 end $$;
 
