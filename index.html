@@ -219,6 +219,7 @@
       <select id="evCurrency"></select>
       <label>Katılımcılar <span class="muted" id="newCount"></span></label>
       <div class="chips" id="newUsers"></div>
+      <div class="muted" style="font-size:13px;margin-top:6px">🔒 Etkinliği yalnızca seçtiğin kişiler (ve sen) görebilir.</div>
       <div class="row" style="margin-top:10px">
         <input id="newGuest" type="text" maxlength="40" placeholder="Misafir adı (giriş yapmayan biri)" class="grow">
         <button type="button" class="small" id="newGuestAdd">Ekle</button>
@@ -288,6 +289,7 @@
 
     <div data-tab="kisiler" class="hidden">
       <h2>Katılımcılar <span class="muted" id="memberCount"></span></h2>
+      <div class="muted" style="font-size:13px;margin:-4px 0 8px">🔒 Bu etkinliği yalnızca buradaki kişiler görür; eklediğin kişi de görmeye başlar.</div>
       <div class="card">
         <div class="members" id="members"></div>
         <div id="addMember">
@@ -479,7 +481,7 @@ function renderHome() {
       <div class="grow"><div class="name">${esc(e.name)}</div>
         <div class="muted">${e.participant_count} kişi · ${e.expense_count} kayıt${Number(e.total) ? " · " + money(Number(e.total), e.currency || "TRY") : ""}</div></div>
       <span class="arrow">›</span></div>`).join("")
-    : `<div class="empty">Henüz etkinlik yok. "+ Yeni" ile oluştur.</div>`;
+    : `<div class="empty">Görebildiğin etkinlik yok. "+ Yeni" ile oluştur ya da birinin seni eklemesini bekle.</div>`;
   if (!base.events.length) $("#newEventForm").classList.remove("hidden");
   if (!$("#evCurrency").children.length) $("#evCurrency").innerHTML = curOptions("TRY");
   if (!$("#newUsers").children.length) {
@@ -889,8 +891,11 @@ async function addParticipant(name, email) {
 $("#members").addEventListener("click", async (e) => {
   const b = e.target.closest("[data-rmp]"); if (!b) return;
   $("#memberErr").textContent = "";
+  const self = P(b.dataset.rmp)?.email === ev.me && ev.created_by !== ev.me;
+  if (self && !confirm("Kendini çıkarırsan bu etkinliği artık göremezsin. Devam?")) return;
   try {
     await rpc("hesap_remove_participant", { p_event: ev.id, p_participant: b.dataset.rmp });
+    if (self) { toast("Etkinlikten ayrıldın"); ev = null; location.hash = ""; return; }
     toast("Çıkarıldı"); await loadEvent(); renderFormOptions(true); renderEvent();
   } catch (err) { $("#memberErr").textContent = err.message; }
 });

@@ -15,6 +15,7 @@ supabase db query --linked -f schema_v2.sql   # etkinlikler, katılımcılar, b�
 # ... schema_v3–v5 sırayla
 supabase db query --linked -f schema_v6.sql   # etkinlik başına para birimi (TRY/USD/EUR/DKK/SEK/NOK)
 supabase db query --linked -f schema_v7.sql   # aynı etkinlikte farklı birimlerle kayıt (kur kayda sabitlenir)
+supabase db query --linked -f schema_v8.sql   # etkinliği yalnızca katılımcıları ve oluşturan görür
 ```
 
 ## Özellikler (v2)
@@ -29,3 +30,8 @@ supabase db query --linked -f schema_v7.sql   # aynı etkinlikte farklı birimle
 - Her etkinliğin bir **ana birimi** var (TRY, USD, EUR, DKK, SEK, NOK); bakiye ve "kim kime ne verecek" bu birimde hesaplanır.
 - Kayıtlar istenen birimde girilebilir. Kur, Avrupa Merkez Bankası'nın kayıt tarihindeki günlük kurundan otomatik gelir ([frankfurter.dev](https://frankfurter.dev)); elle değiştirilebilir. Kur kayda sabitlenir, sonradan değişmez.
 - Kayıtta girilen tutar ve ana birim karşılığı birlikte görünür ("DKK 300,00 · ≈ €40,20"). Başka birimde kayıt varken ana birim değiştirilemez.
+
+## Görünürlük (v8)
+
+- Bir etkinliği yalnızca **katılımcıları** (giriş hesabıyla eklenenler) ve **oluşturan kişi** görür. Kural sunucuda uygulanır: liste, detay ve tüm değişiklik fonksiyonları kontrol eder; yetkisiz erişimde "etkinlik bulunamadı" denir.
+- Bir kişiyi etkinliğe eklemek ona erişim verir; kendini çıkaran (oluşturan değilse) erişimini kaybeder.
