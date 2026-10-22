@@ -12,6 +12,8 @@ Arkadaş grubunun harcama defteri (Splitwise benzeri). Tek sayfa, GitHub Pages't
 supabase db query --linked -f schema.sql
 supabase db query --linked -f seed.local.sql
 supabase db query --linked -f schema_v2.sql   # etkinlikler, katılımcılar, bölüşme, düzenleme
+# ... schema_v3–v5 sırayla
+supabase db query --linked -f schema_v6.sql   # etkinlik başına para birimi (TRY/USD/EUR/DKK/SEK/NOK)
 ```
 
 ## Özellikler (v2)

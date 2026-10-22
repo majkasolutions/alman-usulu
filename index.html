@@ -208,6 +208,8 @@
     <form class="card hidden" id="newEventForm" style="margin-top:10px">
       <label for="evName">Etkinlik adı</label>
       <input id="evName" type="text" maxlength="60" required placeholder="Cunda tatili, Ev, Kamp…">
+      <label for="evCurrency">Para birimi</label>
+      <select id="evCurrency"></select>
       <label>Katılımcılar <span class="muted" id="newCount"></span></label>
       <div class="chips" id="newUsers"></div>
       <div class="row" style="margin-top:10px">
@@ -294,6 +296,7 @@
       <h2>Etkinlik</h2>
       <div class="card">
         <div class="row"><span class="grow">Adı değiştir</span><button type="button" class="small" id="renameBtn">✎ Düzenle</button></div>
+        <div class="row" style="margin-top:10px"><label for="evCurSel" class="grow" style="margin:0">Para birimi</label><select id="evCurSel" style="width:auto"></select></div>
         <div class="row" style="margin-top:10px"><span class="grow muted">Etkinliği ve tüm kayıtlarını sil</span><button type="button" class="small danger" id="delEventBtn">Sil</button></div>
       </div>
     </div>
@@ -314,7 +317,7 @@
       <label for="desc">Açıklama</label>
       <input id="desc" type="text" maxlength="120" required placeholder="Akşam yemeği, market, benzin…">
       <div class="row fields">
-        <div class="grow"><label for="amount">Tutar (₺)</label>
+        <div class="grow"><label for="amount" id="amountLabel">Tutar (₺)</label>
           <input id="amount" type="number" inputmode="decimal" step="0.01" min="0.01" required placeholder="0,00"></div>
         <div class="grow"><label for="date">Tarih</label><input id="date" type="date" required></div>
       </div>
@@ -371,8 +374,11 @@ const MAX_P = 10;
 const TOKENS = ["🎩","🚗","🐕","🚢","👢","🐈","🦖","🛵","🍕","🎸","🚀","🐧","⛵","🧸","🎲","🏎️"];
 
 const $ = (s) => document.querySelector(s);
-const fmt = new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" });
-const money = (n) => fmt.format(n);
+const CURRENCIES = { TRY: "₺ Türk lirası", USD: "$ ABD doları", EUR: "€ Euro", DKK: "kr Danimarka kronu", SEK: "kr İsveç kronu", NOK: "kr Norveç kronu" };
+const CUR_SYM = { TRY: "₺", USD: "$", EUR: "€", DKK: "DKK", SEK: "SEK", NOK: "NOK" };
+const fmts = {};
+const money = (n, cur = ev?.currency || "TRY") => (fmts[cur] ||= new Intl.NumberFormat("tr-TR", { style: "currency", currency: cur })).format(n);
+const curOptions = (sel) => Object.entries(CURRENCIES).map(([k, v]) => `<option value="${k}" ${k === sel ? "selected" : ""}>${v} (${k})</option>`).join("");
 const AY = ["Oca","Şub","Mar","Nis","May","Haz","Tem","Ağu","Eyl","Eki","Kas","Ara"];
 const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const today = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
@@ -456,10 +462,11 @@ function renderHome() {
   $("#events").innerHTML = base.events.length ? base.events.map(e => `
     <div class="card ev" data-open="${e.id}">
       <div class="grow"><div class="name">${esc(e.name)}</div>
-        <div class="muted">${e.participant_count} kişi · ${e.expense_count} kayıt${Number(e.total) ? " · " + money(Number(e.total)) : ""}</div></div>
+        <div class="muted">${e.participant_count} kişi · ${e.expense_count} kayıt${Number(e.total) ? " · " + money(Number(e.total), e.currency || "TRY") : ""}</div></div>
       <span class="arrow">›</span></div>`).join("")
     : `<div class="empty">Henüz etkinlik yok. "+ Yeni" ile oluştur.</div>`;
   if (!base.events.length) $("#newEventForm").classList.remove("hidden");
+  if (!$("#evCurrency").children.length) $("#evCurrency").innerHTML = curOptions("TRY");
   if (!$("#newUsers").children.length) {
     $("#newUsers").innerHTML = base.users.map(u =>
       `<label class="chip on"><input type="checkbox" value="${u.email}" checked>${esc(u.name)}</label>`).join("");
@@ -559,7 +566,7 @@ $("#newEventForm").addEventListener("submit", async (e) => {
   if (ps.length > MAX_P) { $("#newEventErr").textContent = `En fazla ${MAX_P} katılımcı.`; return; }
   const btn = e.target.querySelector("button.primary"); btn.disabled = true;
   try {
-    const id = await rpc("hesap_create_event", { p_name: $("#evName").value.trim(), p_participants: ps });
+    const id = await rpc("hesap_create_event", { p_name: $("#evName").value.trim(), p_participants: ps, p_currency: $("#evCurrency").value });
     $("#evName").value = ""; newGuests = [];
     location.hash = "#e/" + id;
   } catch (err) { $("#newEventErr").textContent = err.message; }
@@ -749,6 +756,9 @@ function renderEvent() {
   if (!ev || !ev.participants) return;
   const me = meP();
   $("#evTitle").textContent = ev.name;
+  const cur = ev.currency || "TRY";
+  $("#amountLabel").textContent = `Tutar (${CUR_SYM[cur] || cur})`;
+  $("#evCurSel").innerHTML = curOptions(cur);
   const total = ev.expenses.filter(e => e.kind === "expense").reduce((s, e) => s + Math.round(Number(e.amount) * 100), 0);
   $("#evSub").textContent = total
     ? `Toplam ${money(total / 100)} · kişi başı ${money(total / ev.participants.length / 100)} · ${ev.participants.length} kişi`
@@ -865,6 +875,11 @@ $("#members").addEventListener("click", async (e) => {
 $("#renameBtn").addEventListener("click", async () => {
   const n = prompt("Etkinliğin yeni adı", ev.name); if (!n || !n.trim() || n.trim() === ev.name) return;
   try { await rpc("hesap_rename_event", { p_event: ev.id, p_name: n.trim() }); await loadEvent(); renderEvent(); } catch (err) { toast(err.message); }
+});
+$("#evCurSel").addEventListener("change", async (e) => {
+  const cur = e.target.value; if (cur === ev.currency) return;
+  try { await rpc("hesap_set_currency", { p_event: ev.id, p_currency: cur }); await loadEvent(); renderEvent(); toast(`Para birimi: ${cur}`); }
+  catch (err) { toast(err.message); e.target.value = ev.currency || "TRY"; }
 });
 $("#delEventBtn").addEventListener("click", async () => {
   if (!pendingDeleteEvent) { pendingDeleteEvent = true; renderEvent(); setTimeout(() => { pendingDeleteEvent = false; if (ev) renderEvent(); }, 5000); return; }
