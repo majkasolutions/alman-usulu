@@ -6,9 +6,8 @@
 // #reset/… olarak açılır ve hesap_verify / hesap_reset_password ile tamamlanır.
 //
 // E-posta SMTP ile (465/SSL; Supabase Edge 25 ve 587'ye izin vermez) gider. Anahtarlar
-// PAYDAY_ önekli; başka uygulamanın e-posta ayarına geri dönüş (fallback) YOK:
-//   PAYDAY_SMTP_HOST, PAYDAY_SMTP_PORT (varsayılan 465), PAYDAY_SMTP_USER, PAYDAY_SMTP_PASS,
-//   PAYDAY_MAIL_FROM (varsayılan "Payday <PAYDAY_SMTP_USER>")
+// PAYDAY_ önekli; başka uygulamanın e-posta ayarına geri dönüş (fallback) YOK. Gerekli tek gizli
+// anahtar PAYDAY_SMTP_PASS; PAYDAY_SMTP_HOST/PORT/USER ve PAYDAY_MAIL_FROM isteğe bağlı (varsayılanlar aşağıda).
 // JWT doğrulaması KAPALI (herkese açık kayıt formu); IP başına dakikada 5 istek.
 
 import nodemailer from "npm:nodemailer@6.9.16";
@@ -17,13 +16,14 @@ import { APP_URL, mail } from "./mail.ts";
 const ORIGINS = ["https://majkasolutions.github.io", "http://localhost:8765", "http://localhost:8766"];
 const SB_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SB_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+// info@majkasolutions.com Turhost (GoDaddy/secureserver) üzerinde; yalnızca şifre gizli anahtar.
 const SMTP = {
-  host: Deno.env.get("PAYDAY_SMTP_HOST") ?? "",
-  port: Number(Deno.env.get("PAYDAY_SMTP_PORT") ?? "465"),
-  user: Deno.env.get("PAYDAY_SMTP_USER") ?? "",
+  host: Deno.env.get("PAYDAY_SMTP_HOST") || "smtpout.secureserver.net",
+  port: Number(Deno.env.get("PAYDAY_SMTP_PORT") || "465"),
+  user: Deno.env.get("PAYDAY_SMTP_USER") || "info@majkasolutions.com",
   pass: Deno.env.get("PAYDAY_SMTP_PASS") ?? "",
 };
-const FROM = Deno.env.get("PAYDAY_MAIL_FROM") ?? `Payday <${SMTP.user}>`;
+const FROM = Deno.env.get("PAYDAY_MAIL_FROM") || `Payday <${SMTP.user}>`;
 
 const hits = new Map<string, number[]>();
 function limited(ip: string) {

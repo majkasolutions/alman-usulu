@@ -42,7 +42,7 @@ supabase functions deploy payday-auth --no-verify-jwt
 
 - **Kayıt:** ad + e-posta + şifre (en az 8). E-postaya gelen onay linkine tıklanmadan giriş yapılamaz. "Şifremi unuttum" e-postayla sıfırlama linki gönderir (1 saat geçerli).
 - **Ayrılık:** Payday kullanıcıları yalnızca `hesap.users` tablosunda; majka-panel'in Supabase Auth'u (`auth.users`) ve diğer uygulamalar kullanılmaz. Onay/sıfırlama linkleri `hesap.auth_tokens`'ta (yalnızca sha256 özeti) tutulur.
-- **E-posta:** `payday-auth` Edge Function'ı SMTP ile (465/SSL) gönderir. Anahtarlar Supabase → Edge Functions → Secrets'ta: `PAYDAY_SMTP_HOST`, `PAYDAY_SMTP_PORT` (465), `PAYDAY_SMTP_USER`, `PAYDAY_SMTP_PASS`, `PAYDAY_MAIL_FROM` (ör. `Payday <info@majkasolutions.com>`).
+- **E-posta:** `payday-auth` Edge Function'ı SMTP ile (465/SSL) gönderir. Gönderen info@majkasolutions.com (Turhost/GoDaddy, `smtpout.secureserver.net:465`); gereken tek gizli anahtar Supabase → Edge Functions → Secrets'taki `PAYDAY_SMTP_PASS`. `PAYDAY_SMTP_HOST/PORT/USER` ve `PAYDAY_MAIL_FROM` ile varsayılanlar değiştirilebilir.
 - **Arkadaşlık:** e-postayla istek gönderilir, karşı taraf kabul eder. Yalnızca arkadaşlar etkinliğe davet edilebilir.
 - **Davet:** davet edilen kişi kabul edene kadar etkinliği göremez; reddederse adıyla misafir olarak kalır (kayıtlar bozulmaz).
 - **Görünürlük:** başkalarının IBAN'ı yalnızca arkadaşlara ve ortak etkinliktekilere görünür.
