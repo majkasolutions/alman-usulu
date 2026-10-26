@@ -73,6 +73,14 @@
   .people .row:last-child{border-bottom:0}
   .people .who{display:flex;flex-direction:column;min-width:0}
   .people .who .muted{font-size:12px;overflow:hidden;text-overflow:ellipsis}
+  .warn{border-color:#f59e0b;background:color-mix(in srgb,#f59e0b 10%,var(--card))}
+  .acct .row{gap:8px}
+  .acct h3{margin:16px 0 6px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .acct h3:first-of-type{margin-top:6px}
+  .consent{display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-top:12px;color:var(--muted)}
+  .consent input{margin-top:2px;flex:0 0 auto;width:auto}
+  .legal{text-align:center;font-size:13px;margin-top:14px}
+  .legal a{color:var(--muted)}
   .badge{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
   .bal{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .bal .card{padding:12px}
@@ -225,6 +233,7 @@
       <label for="regPass">Şifre <span class="muted">(en az 8 karakter)</span></label>
       <input id="regPass" type="password" minlength="8" autocomplete="new-password" required>
       <input id="regWebsite" type="text" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
+      <label class="consent"><input id="regConsent" type="checkbox" required><span><a href="privacy.html" target="_blank">Gizlilik politikasını ve KVKK aydınlatma metnini</a> okudum; verilerimin bu metinde anlatıldığı şekilde (yurt dışındaki sunucularda saklanması dahil) işlenmesini kabul ediyorum.</span></label>
       <button class="primary" type="submit">Kayıt ol</button>
       <div class="muted" style="font-size:13px;margin-top:8px">Kayıttan sonra e-postana bir onay linki gelir; onaylayınca giriş yapabilirsin.</div>
       <div class="err" id="regErr"></div>
@@ -245,6 +254,7 @@
       <div class="err" id="resetErr"></div>
     </form>
     <div class="info" id="authInfo"></div>
+    <div class="legal"><a href="privacy.html" target="_blank">Gizlilik politikası ve KVKK aydınlatma metni</a></div>
   </section>
 
   <!-- ============ Etkinlikler -->
@@ -253,6 +263,12 @@
     <div class="row">
       <div class="brand grow"><img src="icons/logo.svg" alt=""><div><h1>Payday</h1><div class="muted" id="who"></div></div></div>
       <button class="small" id="logoutBtn">Çıkış</button>
+    </div>
+
+    <div class="card warn hidden" id="mailWarn" style="margin-top:12px">
+      <b>⚠️ Gerçek e-postanı ekle</b>
+      <div class="muted" style="font-size:14px;margin-top:4px">Hesabın <span id="mailWarnAddr"></span> adresiyle açılmış; bu adres sana ait değilse şifreni unuttuğunda hesabını kurtaramazsın ve arkadaşların seni bulamaz.</div>
+      <button type="button" class="small primary" id="mailWarnBtn" style="margin-top:10px">E-postamı güncelle</button>
     </div>
 
     <div id="invitesBox" class="hidden">
@@ -292,6 +308,34 @@
 
     <h2>Profilim</h2>
     <div class="card prof">
+      <details id="accountCard">
+        <summary><span class="big">👤</span><span class="grow"><b>Hesabım</b><span class="muted" id="acctSub"></span></span><span class="chev">›</span></summary>
+        <div class="acct">
+          <h3>Ad</h3>
+          <form id="nameForm" class="row"><input id="acctName" type="text" maxlength="40" required class="grow"><button class="small" type="submit">Kaydet</button></form>
+          <h3>E-posta</h3>
+          <div class="muted" style="font-size:14px">Şu an: <b id="acctEmail"></b></div>
+          <form id="emailForm" class="row" style="margin-top:8px"><input id="acctNewEmail" type="email" inputmode="email" autocapitalize="off" required placeholder="Yeni e-posta" class="grow"><button class="small" type="submit">Link gönder</button></form>
+          <div class="muted" style="font-size:12px;margin-top:4px">Yeni adrese bir onay linki gider; linke tıklayınca adresin değişir.</div>
+          <h3>Şifre</h3>
+          <form id="passForm">
+            <input id="acctOldPass" type="password" autocomplete="current-password" required placeholder="Mevcut şifre">
+            <input id="acctNewPass" type="password" autocomplete="new-password" minlength="8" required placeholder="Yeni şifre (en az 8 karakter)" style="margin-top:8px">
+            <button class="small" type="submit" style="margin-top:8px">Şifreyi değiştir</button>
+          </form>
+          <h3>Diğer</h3>
+          <div class="row"><a href="privacy.html" target="_blank" class="grow" style="font-size:14px">Gizlilik politikası</a><button type="button" class="small" id="logoutBtn2">Çıkış yap</button></div>
+          <div style="margin-top:14px">
+            <button type="button" class="link" id="delAcctToggle" style="color:var(--neg);padding-left:0">Hesabımı sil</button>
+            <form id="delAcctForm" class="hidden" style="margin-top:6px">
+              <div class="muted" style="font-size:13px">Adın, e-postan, şifren ve IBAN'ın kalıcı olarak silinir; arkadaşlıkların biter. Etkinliklerdeki geçmiş kayıtlar, hesapların bozulmaması için adınla misafir olarak kalır. Bu işlem geri alınamaz.</div>
+              <input id="delAcctPass" type="password" autocomplete="current-password" required placeholder="Onay için şifren" style="margin-top:8px">
+              <button class="small danger" type="submit" style="margin-top:8px">Hesabımı kalıcı olarak sil</button>
+            </form>
+          </div>
+          <div class="err" id="acctErr"></div>
+        </div>
+      </details>
       <details id="tokenCard">
         <summary><span class="big" id="myToken">❔</span><span class="grow"><b id="tokenText">Piyonun</b><span class="muted" id="tokenSub"></span></span><span class="chev">›</span></summary>
         <div class="tokens" id="tokenGrid"></div>
@@ -476,7 +520,11 @@ async function rpc(fn, args) {
     body: JSON.stringify({ p_email: session.email, p_pass: session.pass, ...args }),
   });
   const body = await r.json().catch(() => null);
-  if (!r.ok) throw new Error(body?.message || body?.hint || `Hata (${r.status})`);
+  if (!r.ok) {
+    // oturum düştüyse (çıkış, şifre değişimi, 90 gün) giriş ekranına
+    if (body?.hint === "session" && fn !== "hesap_logout") { session = null; saveSession(); setTimeout(() => logout(body.message), 0); }
+    throw new Error(body?.message || body?.hint || `Hata (${r.status})`);
+  }
   return body;
 }
 async function rpcAnon(fn, args) {
@@ -532,7 +580,7 @@ $("#registerForm").addEventListener("submit", async (e) => {
   const btn = e.target.querySelector("button.primary"); btn.disabled = true;
   const email = $("#regEmail").value.trim().toLowerCase();
   try {
-    const d = await authFn({ action: "register", name: $("#regName").value.trim(), email, password: $("#regPass").value, website: $("#regWebsite").value });
+    const d = await authFn({ action: "register", name: $("#regName").value.trim(), email, password: $("#regPass").value, consent: $("#regConsent").checked, website: $("#regWebsite").value });
     $("#email").value = email; $("#pass").value = ""; $("#regPass").value = "";
     authMode("login", d.mail
       ? `Hesabın oluşturuldu. ${email} adresine bir onay linki gönderdik; linke tıkladıktan sonra giriş yapabilirsin.`
@@ -563,9 +611,27 @@ $("#resetForm").addEventListener("submit", async (e) => {
 });
 // e-postadaki linkler: #verify/<token>, #reset/<token>
 async function authLink() {
-  const m = location.hash.match(/^#(verify|reset)\/([0-9a-f]{20,})$/);
+  const m = location.hash.match(/^#(verify|reset|email)\/([0-9a-f]{20,})$/);
   if (!m) return false;
   history.replaceState(null, "", location.pathname + location.search);
+  if (m[1] === "email") {
+    // e-posta değiştirme onayı: aynı cihazdaki oturum açık kalır
+    try {
+      const d = await rpcAnon("hesap_confirm_email", { p_token: m[2] });
+      if (session && session.email === d.old) {
+        session.email = d.new; saveSession();
+        toast("E-posta adresin güncellendi");
+        show("home"); loadHome().then(renderHome).catch(() => {});
+        return true;
+      }
+      session = null; saveSession(); show("login");
+      $("#email").value = d.new; authMode("login", `E-posta adresin ${d.new} olarak güncellendi. Bu adresle giriş yapabilirsin.`);
+    } catch (err) {
+      if (session) { show("home"); loadHome().then(renderHome).catch(() => {}); toast(err.message); }
+      else { show("login"); authMode("login"); $("#loginErr").textContent = err.message; }
+    }
+    return true;
+  }
   session = null; saveSession(); show("login");
   if (m[1] === "reset") { resetToken = m[2]; authMode("reset"); return true; }
   authMode("login", "E-postan onaylanıyor…");
@@ -579,20 +645,26 @@ $("#loginForm").addEventListener("submit", async (e) => {
   $("#loginErr").textContent = ""; $("#authInfo").textContent = ""; $("#resendBtn").classList.add("hidden");
   const btn = e.target.querySelector("button"); btn.disabled = true;
   try {
-    session = { email: $("#email").value.trim().toLowerCase(), pass: $("#pass").value };
+    const d = await rpcAnon("hesap_login", { p_email: $("#email").value.trim().toLowerCase(), p_pass: $("#pass").value, p_device: navigator.userAgent.slice(0, 160) });
+    if (d?.error) {
+      $("#loginErr").textContent = d.error;
+      if (d.code === "unverified") $("#resendBtn").classList.remove("hidden");
+      return;
+    }
+    session = { email: d.email, pass: d.token };
+    $("#pass").value = "";
     await loadHome();
     saveSession();
     route();
-  } catch (err) {
-    session = null; $("#loginErr").textContent = err.message;
-    if (/onaylanmad/.test(err.message)) $("#resendBtn").classList.remove("hidden");
-  }
+  } catch (err) { session = null; $("#loginErr").textContent = err.message; }
   finally { btn.disabled = false; }
 });
-$("#logoutBtn").addEventListener("click", () => {
+function logout(msg) {
+  if (session?.pass?.startsWith("pds_")) rpc("hesap_logout", {}).catch(() => {});
   session = null; base = null; ev = null; saveSession();
-  $("#pass").value = ""; location.hash = ""; show("login");
-});
+  $("#pass").value = ""; location.hash = ""; show("login"); authMode("login", msg);
+}
+$("#logoutBtn").addEventListener("click", () => logout());
 
 // ---------------------------------------------------------------- yönlendirme
 async function route() {
@@ -644,6 +716,7 @@ function renderHome() {
   renderNewGuests();
   renderInvites();
   renderFriends();
+  renderAccount();
   renderTokenCard();
   renderBank();
   maybeTokenModal();
@@ -714,6 +787,42 @@ $("#tokenGrid").addEventListener("click", async (e) => {
 });
 $("#events").addEventListener("click", (e) => { const c = e.target.closest("[data-open]"); if (c) location.hash = "#e/" + c.dataset.open; });
 $("#newUsers").addEventListener("change", (e) => { e.target.closest(".chip").classList.toggle("on", e.target.checked); renderNewGuests(); });
+function renderAccount() {
+  const a = base.account || { email: base.me, name: uname(base.me), mail_ok: true };
+  $("#acctSub").textContent = a.email;
+  $("#acctEmail").textContent = a.email;
+  if (document.activeElement !== $("#acctName")) $("#acctName").value = a.name;
+  $("#mailWarn").classList.toggle("hidden", a.mail_ok !== false);
+  $("#mailWarnAddr").textContent = a.email;
+}
+$("#mailWarnBtn").addEventListener("click", () => { $("#accountCard").open = true; $("#accountCard").scrollIntoView({ behavior: "smooth", block: "start" }); setTimeout(() => $("#acctNewEmail").focus(), 300); });
+$("#logoutBtn2").addEventListener("click", () => logout());
+async function acctDo(form, fn) {
+  $("#acctErr").textContent = "";
+  const btn = form.querySelector("button"); btn.disabled = true;
+  try { await fn(); } catch (err) { $("#acctErr").textContent = err.message; } finally { btn.disabled = false; }
+}
+$("#nameForm").addEventListener("submit", (e) => { e.preventDefault(); acctDo(e.target, async () => {
+  await rpc("hesap_set_name", { p_name: $("#acctName").value.trim() }); toast("Adın güncellendi"); await loadHome(); renderHome();
+}); });
+$("#emailForm").addEventListener("submit", (e) => { e.preventDefault(); acctDo(e.target, async () => {
+  const ne = $("#acctNewEmail").value.trim().toLowerCase();
+  const d = await authFn({ action: "change_email", email: session.email, session: session.pass, new_email: ne });
+  $("#acctNewEmail").value = "";
+  toast(d.mail ? `${ne} adresine onay linki gönderildi` : "E-posta şu an gönderilemedi, biraz sonra tekrar dene");
+}); });
+$("#passForm").addEventListener("submit", (e) => { e.preventDefault(); acctDo(e.target, async () => {
+  await rpc("hesap_change_password", { p_old: $("#acctOldPass").value, p_new: $("#acctNewPass").value });
+  $("#acctOldPass").value = ""; $("#acctNewPass").value = "";
+  toast("Şifren değişti; diğer cihazlardaki oturumlar kapatıldı");
+}); });
+$("#delAcctToggle").addEventListener("click", () => $("#delAcctForm").classList.toggle("hidden"));
+$("#delAcctForm").addEventListener("submit", (e) => { e.preventDefault(); acctDo(e.target, async () => {
+  if (!confirm("Hesabın kalıcı olarak silinecek. Emin misin?")) return;
+  await rpc("hesap_delete_account", { p_confirm_pass: $("#delAcctPass").value });
+  session = null; saveSession(); base = null; ev = null;
+  $("#delAcctPass").value = ""; show("login"); authMode("login", "Hesabın silindi. Payday'i kullandığın için teşekkürler.");
+}); });
 function renderInvites() {
   const inv = base.invites || [];
   $("#invitesBox").classList.toggle("hidden", !inv.length);
@@ -735,16 +844,20 @@ $("#invites").addEventListener("click", async (e) => {
 });
 function renderFriends() {
   const others = base.users.filter(u => u.email !== base.me);
-  const friends = others.filter(u => u.friend), inc = others.filter(u => u.req === "in"), out = others.filter(u => u.req === "out");
+  const friends = others.filter(u => u.friend), inc = others.filter(u => u.req === "in"), out = others.filter(u => u.req === "out"), blocked = others.filter(u => u.blocked);
   $("#friendCount").textContent = friends.length ? `(${friends.length})` : "";
   const who = (u) => `<div class="who grow"><b>${esc(u.name)}</b><span class="muted">${esc(u.email)}</span></div>`;
   $("#friendReqs").innerHTML = inc.map(u => `<div class="row">${who(u)}<span class="badge">istek</span>
+      <button type="button" class="link" data-fr="${u.email}" data-act="block" data-confirm-block="${esc(u.name)}">Engelle</button>
       <button type="button" class="small" data-fr="${u.email}" data-act="no">Reddet</button>
       <button type="button" class="small primary" data-fr="${u.email}" data-act="yes">Kabul</button></div>`).join("")
     + out.map(u => `<div class="row">${who(u)}<span class="badge">bekliyor</span>
       <button type="button" class="link" data-fr="${u.email}" data-act="rm">Geri al</button></div>`).join("");
   $("#friends").innerHTML = friends.length ? friends.map(u => `<div class="row">${who(u)}
-      <button type="button" class="link" data-fr="${u.email}" data-act="rm" data-confirm-rm="${esc(u.name)}">Çıkar</button></div>`).join("")
+      <button type="button" class="link" data-fr="${u.email}" data-act="rm" data-confirm-rm="${esc(u.name)}">Çıkar</button>
+      <button type="button" class="link" data-fr="${u.email}" data-act="block" data-confirm-block="${esc(u.name)}">Engelle</button></div>`).join("")
+      + blocked.map(u => `<div class="row">${who(u)}<span class="badge">engelli</span>
+      <button type="button" class="link" data-fr="${u.email}" data-act="rm">Engeli kaldır</button></div>`).join("")
     : (inc.length || out.length ? "" : `<div class="muted" style="font-size:14px">Henüz arkadaşın yok. Arkadaşının Payday'e kayıtlı e-postasını yazıp istek gönder; kabul edince etkinliklere davet edebilirsin.</div>`);
 }
 $("#friendForm").addEventListener("submit", async (e) => {
@@ -762,9 +875,11 @@ $("#friendForm").addEventListener("submit", async (e) => {
 document.querySelector(".people#friendReqs").parentElement.addEventListener("click", async (e) => {
   const b = e.target.closest("[data-fr]"); if (!b) return;
   if (b.dataset.confirmRm && !confirm(`${b.dataset.confirmRm} arkadaşlıktan çıkarılsın mı? Ortak etkinlikleriniz etkilenmez.`)) return;
+  if (b.dataset.confirmBlock && !confirm(`${b.dataset.confirmBlock} engellensin mi? Sana istek gönderemez, seni etkinliklere davet edemez ve listende görünmez.`)) return;
   b.disabled = true;
   try {
     if (b.dataset.act === "rm") await rpc("hesap_friend_remove", { p_other: b.dataset.fr });
+    else if (b.dataset.act === "block") await rpc("hesap_friend_block", { p_other: b.dataset.fr });
     else await rpc("hesap_friend_respond", { p_other: b.dataset.fr, p_accept: b.dataset.act === "yes" });
     if (b.dataset.act === "yes") toast("Artık arkadaşsınız");
     await loadHome(); renderHome();
@@ -1352,9 +1467,16 @@ $("#expForm").addEventListener("submit", async (e) => {
 
 // ---------------------------------------------------------------- başlat
 loadSession();
-if (/^#(verify|reset)\//.test(location.hash)) route();
+// eski sürüm şifreyi telefonda saklıyordu: bir kez oturum anahtarına çevir, şifreyi sil
+async function upgradeSession() {
+  if (!session || session.pass?.startsWith("pds_")) return;
+  const d = await rpcAnon("hesap_login", { p_email: session.email, p_pass: session.pass, p_device: navigator.userAgent.slice(0, 160) }).catch(() => null);
+  session = d?.token ? { email: d.email, pass: d.token } : null;
+  saveSession();
+}
+if (/^#(verify|reset|email)\//.test(location.hash)) upgradeSession().then(route);
 else if (session) {
-  loadHome().then(route).catch(() => { session = null; saveSession(); show("login"); });
+  upgradeSession().then(() => session ? loadHome().then(route) : show("login")).catch(() => { session = null; saveSession(); show("login"); });
 } else show("login");
 </script>
 </body>

@@ -1,9 +1,10 @@
-// Payday: kayıt, onay e-postasını yeniden gönderme, şifre sıfırlama e-postası.
+// Payday: kayıt, onay e-postasını yeniden gönderme, şifre sıfırlama, e-posta değiştirme.
 //
 // Payday kullanıcıları hesap şemasındadır (hesap.users); majka-panel'in Supabase Auth'u
 // (auth.users) ve diğer uygulamalar KULLANILMAZ. Bu fonksiyon hesap_srv_* fonksiyonlarını
 // service_role ile çağırır, linki e-postayla gönderir. Link uygulamada #verify/… ya da
-// #reset/… olarak açılır ve hesap_verify / hesap_reset_password ile tamamlanır.
+// #reset/… ya da #email/… olarak açılır ve hesap_verify / hesap_reset_password / hesap_confirm_email
+// ile tamamlanır.
 //
 // E-posta SMTP ile (465/SSL; Supabase Edge 25 ve 587'ye izin vermez) gider. Anahtarlar
 // PAYDAY_ önekli; başka uygulamanın e-posta ayarına geri dönüş (fallback) YOK. Gerekli tek gizli
@@ -11,7 +12,7 @@
 // JWT doğrulaması KAPALI (herkese açık kayıt formu); IP başına dakikada 5 istek.
 
 import nodemailer from "npm:nodemailer@6.9.16";
-import { APP_URL, mail } from "./mail.ts";
+import { APP_URL, type Kind, mail } from "./mail.ts";
 
 const ORIGINS = ["https://majkasolutions.github.io", "http://localhost:8765", "http://localhost:8766"];
 const SB_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -55,7 +56,7 @@ async function srv(fn: string, args: Record<string, unknown>) {
   return body as { email: string; name: string; token: string } | null;
 }
 
-async function send(to: string, kind: "verify" | "reset", name: string, token: string) {
+async function send(to: string, kind: Kind, name: string, token: string) {
   const link = `${APP_URL}#${kind}/${token}`;
   const m = mail(kind, name, link);
   const t = nodemailer.createTransport({ host: SMTP.host, port: SMTP.port, secure: SMTP.port === 465, auth: { user: SMTP.user, pass: SMTP.pass } });
@@ -71,7 +72,7 @@ Deno.serve(async (req) => {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "?";
   if (limited(ip)) return out(429, { ok: false, error: "Çok fazla deneme, bir dakika sonra tekrar dene." });
 
-  let b: Record<string, string> = {};
+  let b: Record<string, string | boolean> = {};
   try { b = await req.json(); } catch { return out(400, { ok: false, error: "json" }); }
   if (b.website) return out(200, { ok: true }); // bal küpü
   if (!SB_URL || !SB_KEY) { console.error("payday-auth: SUPABASE_URL/SERVICE_ROLE_KEY yok"); return out(500, { ok: false, error: "config" }); }
@@ -79,11 +80,20 @@ Deno.serve(async (req) => {
 
   try {
     if (b.action === "register") {
-      const r = await srv("hesap_srv_register", { p_email: b.email, p_name: b.name, p_pass: b.password });
+      const r = await srv("hesap_srv_register", { p_email: b.email, p_name: b.name, p_pass: b.password, p_consent: b.consent === true });
       if (!r) return out(500, { ok: false, error: "db" });
       if (!smtpOk) { console.error("payday-auth: PAYDAY_SMTP_* yok"); return out(200, { ok: true, mail: false }); }
       try { await send(r.email, "verify", r.name, r.token); } catch (e) { console.error("payday-auth smtp", String(e).slice(0, 300)); return out(200, { ok: true, mail: false }); }
       console.log("payday-auth register", r.email);
+      return out(200, { ok: true, mail: true });
+    }
+    if (b.action === "change_email") {
+      // oturum anahtarıyla doğrulanır; onay linki YENİ adrese gider, adres ancak tıklanınca değişir
+      const r = await srv("hesap_srv_email_change", { p_email: b.email, p_pass: b.session, p_new_email: b.new_email });
+      if (!r) return out(500, { ok: false, error: "db" });
+      if (!smtpOk) { console.error("payday-auth: PAYDAY_SMTP_* yok"); return out(200, { ok: true, mail: false }); }
+      try { await send(r.email, "email", r.name, r.token); } catch (e) { console.error("payday-auth smtp", String(e).slice(0, 300)); return out(200, { ok: true, mail: false }); }
+      console.log("payday-auth change_email", r.email);
       return out(200, { ok: true, mail: true });
     }
     if (b.action === "resend" || b.action === "forgot") {
