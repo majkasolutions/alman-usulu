@@ -10,5 +10,4 @@ alter table hesap.friendships drop constraint friendships_a_fkey, add constraint
 alter table hesap.friendships drop constraint friendships_b_fkey, add constraint friendships_b_fkey foreign key (b) references hesap.users(email) on update cascade;
 alter table hesap.friendships drop constraint friendships_requested_by_fkey, add constraint friendships_requested_by_fkey foreign key (requested_by) references hesap.users(email) on update cascade;
 
--- Ömercan'ın gerçek adresi (kendisinin isteğiyle; uydurma omercan@gmail.com kaldırıldı)
-update hesap.users set email = 'omercanalp@gmail.com', mail_ok = true where email = 'omercan@gmail.com';
+-- Kişilerin gerçek adres düzeltmeleri kişisel veri olduğu için repoda tutulmaz (data-fixes.local.sql).

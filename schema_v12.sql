@@ -1,3 +1,11 @@
--- Payday v12: Dila'nın gerçek adresi (Ömercan'ın isteğiyle; uydurma dila@gmail.com kaldırıldı).
-update hesap.users set email = 'dilaarslan35@gmail.com', mail_ok = true
-where email = 'dila@gmail.com' and not exists (select 1 from hesap.users where email = 'dilaarslan35@gmail.com');
+-- Payday v12: e-posta değişince (ON UPDATE CASCADE) arkadaşlıklardaki a < b sırası bozulmasın.
+-- (Bu sürümde canlıda yapılan gerçek adres düzeltmeleri kişisel veri olduğu için repoda değil: data-fixes.local.sql)
+create or replace function hesap.friendships_norm()
+returns trigger language plpgsql as $$
+declare t text;
+begin
+  if new.a > new.b then t := new.a; new.a := new.b; new.b := t; end if;
+  return new;
+end $$;
+create or replace trigger friendships_norm before insert or update on hesap.friendships
+  for each row execute function hesap.friendships_norm();
