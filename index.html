@@ -943,7 +943,8 @@ function tokenMap() {
   const m = {};
   const seen = new Set();
   for (const p of ev.participants) {
-    const t = p.email ? users.find(u => u.email === p.email)?.token : null;
+    // yalnızca izinli piyonlar (sunucudan gelen değer HTML'e basılıyor)
+    const t0 = p.email ? users.find(u => u.email === p.email)?.token : null, t = TOKENS.includes(t0) ? t0 : null;
     if (t && !seen.has(t)) { m[p.id] = t; seen.add(t); continue; }
     let i = hash(p.id) % TOKENS.length, k = 0;
     while (used.has(TOKENS[i]) && k < TOKENS.length) { i = (i + 1) % TOKENS.length; k++; }

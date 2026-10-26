@@ -328,3 +328,119 @@ grant execute on function
   public.hesap_delete_account(text, text, text),
   public.hesap_confirm_email(text)
 to anon, authenticated;
+
+-- ---------------------------------------------------------------- denetim düzeltmeleri
+-- 1) Ham şifre artık yalnızca hesap_login'de (kilitli) kabul edilir; diğer tüm çağrılar oturum
+--    anahtarı ister. Eski uygulama ilk açılışta hesap_login ile anahtar alır.
+create or replace function hesap.check_login(p_email text, p_pass text)
+returns text language plpgsql security definer set search_path = hesap, extensions, public as $$
+declare em text := lower(trim(coalesce(p_email, ''))); sid uuid;
+begin
+  if left(coalesce(p_pass, ''), 4) = 'pds_' then
+    update hesap.sessions set last_used_at = now(), expires_at = now() + interval '90 days'
+      where token_hash = encode(extensions.digest(p_pass, 'sha256'), 'hex')
+        and email = em and revoked_at is null and expires_at > now()
+      returning id into sid;
+  end if;
+  if sid is null then
+    raise exception 'Oturumun sona erdi, tekrar giriş yap' using errcode = '28000', hint = 'session';
+  end if;
+  return em;
+end $$;
+
+-- 2) Davet bekleyen kişinin e-postası/IBAN'ı, kabul etmeden etkinlik üyelerine açılmasın
+create or replace function hesap.visible_users(p_me text)
+returns jsonb language sql stable set search_path = hesap, public as $$
+  with f as (
+    select case when a = p_me then b else a end as email, status, requested_by
+      from hesap.friendships
+     where (a = p_me or b = p_me) and status <> 'removed'
+       and not (status = 'blocked' and requested_by <> p_me)
+  ), m as (
+    select distinct p.user_email as email from hesap.participants p
+      where p.user_email is not null and p.status = 'accepted' and hesap.can_see(p.event_id, p_me)
+  ), i as (
+    select distinct invited_by as email from hesap.participants
+      where user_email = p_me and status = 'invited' and invited_by is not null
+  ), ids as (
+    select p_me as email union select email from f union select email from m union select email from i
+  )
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'email', u.email, 'name', u.name, 'token', u.token,
+      'friend', coalesce(f.status = 'accepted', false),
+      'req', case when f.status = 'pending' then case when f.requested_by = p_me then 'out' else 'in' end end,
+      'blocked', coalesce(f.status = 'blocked', false),
+      'member', m.email is not null,
+      'full_name', case when u.email = p_me or f.status = 'accepted' or m.email is not null then u.full_name end,
+      'iban', case when u.email = p_me or f.status = 'accepted' or m.email is not null then u.iban end) order by u.sort), '[]'::jsonb)
+  from ids join hesap.users u on u.email = ids.email
+  left join f on f.email = u.email left join m on m.email = u.email;
+$$;
+
+-- 3) Onaylanmamış bir hesaba tekrar kayıt şifreyi/adı EZMEZ (başkası el koyamasın); yalnızca yeni link.
+--    bcrypt maliyeti 10.
+create or replace function public.hesap_srv_register(p_email text, p_name text, p_pass text)
+returns jsonb language plpgsql security definer set search_path = hesap, extensions, public as $$
+declare em text := lower(trim(coalesce(p_email, ''))); nm text := trim(coalesce(p_name, '')); u hesap.users%rowtype;
+begin
+  if em !~ '^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$' or length(em) > 120 then raise exception 'Geçerli bir e-posta gir'; end if;
+  if length(nm) not between 2 and 40 then raise exception 'Ad 2–40 karakter olmalı'; end if;
+  if length(coalesce(p_pass, '')) < 8 then raise exception 'Şifre en az 8 karakter olmalı'; end if;
+  select * into u from hesap.users where email = em;
+  if u.email is not null and u.email_verified_at is not null then
+    raise exception 'Bu e-posta zaten kayıtlı. Giriş yap ya da şifreni sıfırla.';
+  end if;
+  if u.email is null then
+    insert into hesap.users(email, name, pass_hash, sort)
+      values (em, nm, extensions.crypt(p_pass, extensions.gen_salt('bf', 10)), coalesce((select max(sort) from hesap.users), 0) + 1);
+  end if;
+  return jsonb_build_object('email', em, 'name', coalesce(u.name, nm), 'token', hesap.new_token(em, 'verify'));
+end $$;
+
+create or replace function public.hesap_change_password(p_email text, p_pass text, p_old text, p_new text)
+returns void language plpgsql security definer set search_path = hesap, extensions, public as $$
+declare me text; u hesap.users%rowtype;
+begin
+  me := hesap.check_login(p_email, p_pass);
+  select * into u from hesap.users where email = me;
+  if u.pass_hash <> extensions.crypt(coalesce(p_old, ''), u.pass_hash) then raise exception 'Mevcut şifren yanlış'; end if;
+  if length(coalesce(p_new, '')) < 8 then raise exception 'Yeni şifre en az 8 karakter olmalı'; end if;
+  update hesap.users set pass_hash = extensions.crypt(p_new, extensions.gen_salt('bf', 10)) where email = me;
+  update hesap.sessions set revoked_at = now()
+   where email = me and revoked_at is null
+     and token_hash <> encode(extensions.digest(coalesce(p_pass, ''), 'sha256'), 'hex');
+end $$;
+
+create or replace function public.hesap_reset_password(p_token text, p_new_pass text)
+returns text language plpgsql security definer set search_path = hesap, extensions, public as $$
+declare em text;
+begin
+  if length(coalesce(p_new_pass, '')) < 8 then raise exception 'Şifre en az 8 karakter olmalı'; end if;
+  em := hesap.use_token(p_token, 'reset');
+  update hesap.users set pass_hash = extensions.crypt(p_new_pass, extensions.gen_salt('bf', 10)),
+                         email_verified_at = coalesce(email_verified_at, now()) where email = em;
+  update hesap.sessions set revoked_at = now() where email = em and revoked_at is null;  -- şifre sıfırlandı: tüm cihazlar çıkar
+  return em;
+end $$;
+
+-- 4) Piyon: yalnızca uygulamadaki listeden (serbest metin HTML'e basılıyordu); hata başkasının adını vermez
+create or replace function public.hesap_set_token(p_email text, p_pass text, p_token text)
+returns void language plpgsql security definer set search_path = hesap, extensions, public as $$
+declare me text;
+begin
+  me := hesap.check_login(p_email, p_pass);
+  if nullif(p_token, '') is not null and not (p_token = any (array['🎩','🚗','🐕','🚢','👢','🐈','🦖','🛵','🍕','🎸','🚀','🐧','⛵','🧸','🎲','🏎️'])) then
+    raise exception 'geçersiz piyon';
+  end if;
+  if exists (select 1 from hesap.users where token = nullif(p_token, '') and email <> me) then
+    raise exception 'Bu piyon alınmış, başka seç';
+  end if;
+  update hesap.users set token = nullif(p_token, '') where email = me;
+end $$;
+update hesap.users set token = null
+ where token is not null and not (token = any (array['🎩','🚗','🐕','🚢','👢','🐈','🦖','🛵','🍕','🎸','🚀','🐧','⛵','🧸','🎲','🏎️']));
+
+-- 5) Eski iç sürümler dışarıya kapalı (yalnızca sarmalayıcılar çağırır; security definer olduğu için çalışmaya devam eder)
+revoke execute on function public.hesap_save_expense(text, text, uuid, uuid, text, uuid, numeric, text, date, text, jsonb) from public, anon, authenticated;
+revoke execute on function public.hesap_create_event(text, text, text, jsonb) from public, anon, authenticated;
+revoke execute on function public.hesap_srv_register(text, text, text) from public, anon, authenticated;
