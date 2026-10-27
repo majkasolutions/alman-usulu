@@ -10,11 +10,11 @@ function esc(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-type Kind = "verify" | "reset";
+export type Kind = "verify" | "reset" | "email";
 
 const COPY: Record<Kind, { subject: string; preheader: string; title: string; intro: string; button: string; note: string; outro: string }> = {
   verify: {
-    subject: "Payday hesabını onayla ✅",
+    subject: "Payday hesabını onayla",
     preheader: "Tek dokunuşla e-postanı onayla, arkadaşlarınla hesabı bölmeye başla.",
     title: "Hoş geldin!",
     intro: "Payday hesabın neredeyse hazır. Bu e-posta adresinin sana ait olduğunu doğrulamak için aşağıdaki düğmeye dokun.",
@@ -23,13 +23,22 @@ const COPY: Record<Kind, { subject: string; preheader: string; title: string; in
     outro: "Payday'e kaydolmadıysan bu e-postayı yok sayabilirsin; hesap açılmaz.",
   },
   reset: {
-    subject: "Payday şifre sıfırlama 🔑",
+    subject: "Payday şifre sıfırlama",
     preheader: "Yeni şifreni belirlemek için linke dokun (1 saat geçerli).",
     title: "Şifreni mi unuttun?",
     intro: "Sorun değil. Aşağıdaki düğmeye dokunup yeni bir şifre belirleyebilirsin.",
     button: "Yeni şifre belirle",
     note: "Bu link 1 saat geçerli ve yalnızca bir kez kullanılabilir.",
     outro: "Şifre sıfırlamayı sen istemediysen bu e-postayı yok say; şifren değişmez.",
+  },
+  email: {
+    subject: "Payday e-posta adresini doğrula",
+    preheader: "Payday hesabının e-posta adresini bu adresle değiştirmek için onayla.",
+    title: "Yeni e-postanı onayla",
+    intro: "Payday hesabının e-posta adresini bu adresle değiştirmek istedin. Onaylamak için aşağıdaki düğmeye dokun; etkinliklerin, kayıtların ve arkadaşların aynen kalır.",
+    button: "E-postamı onayla",
+    note: "Bu link 48 saat geçerli.",
+    outro: "Bu isteği sen yapmadıysan bu e-postayı yok say; hiçbir hesap değişmez.",
   },
 };
 

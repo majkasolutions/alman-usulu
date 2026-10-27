@@ -17,6 +17,8 @@ supabase db query --linked -f schema_v6.sql   # etkinlik başına para birimi (T
 supabase db query --linked -f schema_v7.sql   # aynı etkinlikte farklı birimlerle kayıt (kur kayda sabitlenir)
 supabase db query --linked -f schema_v8.sql   # etkinliği yalnızca katılımcıları ve oluşturan görür
 supabase db query --linked -f schema_v9.sql   # kayıt + e-posta onayı, arkadaşlık, etkinlik daveti
+# schema_v10–v12: e-posta güvenliği, ON UPDATE CASCADE, arkadaşlık sırası tetikleyicisi (kişisel veri düzeltmeleri data-fixes.local.sql'de, repoya girmez)
+supabase db query --linked -f schema_v13.sql   # oturum anahtarı, Hesabım, engelleme, gizlilik onayı
 supabase functions deploy payday-auth --no-verify-jwt
 ```
 
@@ -46,3 +48,10 @@ supabase functions deploy payday-auth --no-verify-jwt
 - **Arkadaşlık:** e-postayla istek gönderilir, karşı taraf kabul eder. Yalnızca arkadaşlar etkinliğe davet edilebilir.
 - **Davet:** davet edilen kişi kabul edene kadar etkinliği göremez; reddederse adıyla misafir olarak kalır (kayıtlar bozulmaz).
 - **Görünürlük:** başkalarının IBAN'ı yalnızca arkadaşlara ve ortak etkinliktekilere görünür.
+
+## Hesabım, oturum, gizlilik (v13)
+
+- **Oturum:** giriş bir kez şifreyle yapılır, uygulama şifre yerine 90 gün geçerli bir oturum anahtarı (`pds_…`) saklar; şifre telefonda tutulmaz. 10 hatalı denemede hesap 15 dk kilitlenir.
+- **Hesabım** (Profilim): ad değiştirme, e-posta değiştirme (yeni adrese onay linki), şifre değiştirme (diğer cihazlar kapanır), hesap silme (kişisel veriler silinir; etkinliklerdeki geçmiş kayıtlar misafir adıyla kalır).
+- **Engelleme:** engellenen kişi istek gönderemez, davet edemez, seni listesinde görmez.
+- **Gizlilik:** `privacy.html` (gizlilik politikası + KVKK aydınlatma metni); kayıtta onay kutusu zorunlu.
