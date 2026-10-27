@@ -109,6 +109,14 @@
   .fx input{width:120px;flex:0 0 auto}
   .fx .note{font-size:13px;color:var(--muted);margin-top:6px}
   .exp.payment .desc::before{content:"↔ ";color:var(--muted)}
+  .more{margin-top:14px;padding:12px 14px}
+  .more summary{cursor:pointer;font-weight:600}
+  .more .list{margin-top:10px}
+  #activityBox{margin-bottom:76px}
+  .act{display:flex;gap:8px;font-size:13px;padding:6px 0;border-top:1px solid var(--line)}
+  .act:first-child{border-top:0}
+  .act time{color:var(--muted);white-space:nowrap;margin-left:auto}
+  .badge.ok{border-color:var(--pos);color:var(--pos)}
   .exp .actions{grid-column:1 / -1;display:flex;gap:8px;justify-content:flex-end;align-items:center}
   .shares{display:flex;flex-direction:column;gap:6px;margin-top:6px}
   .shares .row{padding:4px 0}
@@ -390,6 +398,8 @@
 
     <div data-tab="kayitlar" class="hidden">
       <div class="list" id="list" style="margin-top:12px"></div>
+      <details class="card more hidden" id="deletedBox"><summary>Silinenler <span class="muted" id="deletedCount"></span></summary><div class="list" id="deletedList"></div></details>
+      <details class="card more hidden" id="activityBox"><summary>Değişiklik geçmişi</summary><div id="activityList"></div></details>
     </div>
 
     <div data-tab="kisiler" class="hidden">
@@ -412,7 +422,8 @@
       <div class="card">
         <div class="row"><span class="grow">Adı değiştir</span><button type="button" class="small" id="renameBtn">✎ Düzenle</button></div>
         <div class="row" style="margin-top:10px"><label for="evCurSel" class="grow" style="margin:0">Para birimi</label><select id="evCurSel" style="width:auto"></select></div>
-        <div class="row" style="margin-top:10px"><span class="grow muted">Etkinliği ve tüm kayıtlarını sil</span><button type="button" class="small danger" id="delEventBtn">Sil</button></div>
+        <div class="row" style="margin-top:10px" id="delEventRow"><span class="grow muted">Etkinliği ve tüm kayıtlarını sil</span><button type="button" class="small danger" id="delEventBtn">Sil</button></div>
+        <div class="muted hidden" id="ownerNote" style="font-size:13px;margin-top:10px"></div>
       </div>
     </div>
 
@@ -1096,9 +1107,20 @@ function settlements(b) {
   return out;
 }
 
+const ACT = {
+  add: "ekledi", edit: "düzenledi", delete: "sildi", restore: "geri aldı", confirm: "ödemeyi aldığını onayladı",
+  unconfirm: "ödeme onayını geri aldı", member_add: "kişi ekledi", member_remove: "kişi çıkardı",
+  currency: "para birimini değiştirdi", rename: "etkinliğin adını değiştirdi",
+};
+function actText(a) {
+  const amt = a.amount != null ? ` · ${money(Number(a.amount))}` : "";
+  return `${ACT[a.action] || a.action}${a.detail ? `: ${esc(a.detail)}` : ""}${amt}`;
+}
+
 function renderEvent() {
   if (!ev || !ev.participants) return;
   const me = meP();
+  const owner = ev.created_by === ev.me;
   $("#evTitle").textContent = ev.name;
   const cur = ev.currency || "TRY";
   $("#evCurSel").innerHTML = curOptions(cur);
@@ -1164,21 +1186,44 @@ function renderEvent() {
     const sub = e.kind === "payment"
       ? `${esc(pname(e.payer))} → ${esc(pname(e.shares[0]?.p))}`
       : `${esc(pname(e.payer))} ödedi · ${everyone ? "herkes eşit" : e.shares.map(s => `${esc(pname(s.p))} ${s.o != null && e.orig_currency ? money(Number(s.o), e.orig_currency) : money(Number(s.amount))}`).join(", ")}`;
-    const actions = pendingDelete === e.id
+    const canEdit = e.created_by === ev.me || owner;
+    const receiver = e.kind === "payment" && P(e.shares[0]?.p)?.email;
+    const iReceive = receiver && receiver === ev.me;
+    const recv = !receiver ? "" : e.confirmed_at
+      ? ` <span class="badge ok">✓ alındı</span>${iReceive ? ` <button type="button" class="link" data-unrecv="${e.id}">geri al</button>` : ""}`
+      : iReceive ? ` <button type="button" class="small" data-recv="${e.id}">Aldım</button>` : ` <span class="badge">onay bekliyor</span>`;
+    const actions = !canEdit ? ""
+      : pendingDelete === e.id
       ? `<span class="muted">Silinsin mi?</span><button type="button" class="small" data-cancel>Vazgeç</button><button type="button" class="small danger" data-confirm="${e.id}">Evet, sil</button>`
       : `<button type="button" class="small" data-edit="${e.id}">Düzenle</button><button type="button" class="small" data-del="${e.id}">Sil</button>`;
     return `<div class="card exp ${e.kind}">
       <div class="date"><b>${d.getDate()}</b>${AY[d.getMonth()]}</div>
-      <div><div class="desc">${esc(e.description)}</div><div class="sub">${sub}</div>
+      <div><div class="desc">${esc(e.description)}</div><div class="sub">${sub}${recv}</div>
         <div class="sub">${esc(uname(e.created_by))} ekledi${e.updated_at ? ` · ${esc(uname(e.updated_by || e.created_by))} düzenledi` : ""}</div></div>
       <div class="amt">${e.orig_currency ? `${money(Number(e.orig_amount), e.orig_currency)}<span class="mine">≈ ${money(amt)}</span>` : money(amt)}<span class="mine">${mine}</span></div>
-      <div class="actions">${actions}</div></div>`;
+      ${actions ? `<div class="actions">${actions}</div>` : ""}</div>`;
   }).join("") : `<div class="empty">Henüz kayıt yok. İlk harcamayı ekle.</div>`;
+
+  // silinenler (geri alınabilir) + değişiklik geçmişi
+  const del = ev.deleted || [];
+  $("#deletedBox").classList.toggle("hidden", !del.length);
+  $("#deletedCount").textContent = del.length ? `(${del.length})` : "";
+  $("#deletedList").innerHTML = del.map(e => {
+    const can = e.created_by === ev.me || owner;
+    return `<div class="row"><span class="grow">${esc(e.description)} <span class="muted">· ${e.orig_currency ? money(Number(e.orig_amount), e.orig_currency) : money(Number(e.amount))} · ${esc(uname(e.deleted_by))} sildi</span></span>
+      ${can ? `<button type="button" class="small" data-restore="${e.id}">Geri al</button>` : ""}</div>`;
+  }).join("");
+  const acts = ev.activity || [];
+  $("#activityBox").classList.toggle("hidden", !acts.length);
+  $("#activityList").innerHTML = acts.map(a => {
+    const t = new Date(a.at);
+    return `<div class="act"><span><b>${esc(a.actor_name || uname(a.actor))}</b> ${actText(a)}</span><time>${t.getDate()} ${AY[t.getMonth()]} ${String(t.getHours()).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")}</time></div>`;
+  }).join("");
 
   // katılımcılar
   $("#memberCount").textContent = `(${ev.participants.length}/${MAX_P})`;
   $("#members").innerHTML = ev.participants.map(p => `<div class="row"><span class="grow">${esc(p.name)}${p.email ? ` <span class="muted">${esc(p.email)}</span>` : ' <span class="muted">misafir</span>'}${p.status === "invited" ? ' <span class="badge">davet bekliyor</span>' : ""}</span>
-    <button type="button" class="small" data-rmp="${p.id}">${p.status === "invited" ? "Daveti geri al" : "Çıkar"}</button></div>`).join("");
+    ${owner || p.email === ev.me ? `<button type="button" class="small" data-rmp="${p.id}">${p.email === ev.me && !owner ? "Ayrıl" : p.status === "invited" ? "Daveti geri al" : "Çıkar"}</button>` : ""}</div>`).join("");
   const full = ev.participants.length >= MAX_P;
   $("#addMember").classList.toggle("hidden", full);
   $("#memberErr").textContent = full ? `Katılımcı sınırı (${MAX_P}) doldu.` : "";
@@ -1189,6 +1234,10 @@ function renderEvent() {
     || `<span class="muted" style="font-size:13px">Davet edilebilecek arkadaş yok (arkadaş eklemek için ana sayfaya dön). Misafir ekleyebilirsin.</span>`;
 
   $("#delEventBtn").textContent = pendingDeleteEvent ? "Evet, hepsini sil" : "Sil";
+  $("#delEventRow").classList.toggle("hidden", !owner);
+  if (!owner) $("#evCurSel").disabled = true;
+  $("#ownerNote").classList.toggle("hidden", owner);
+  $("#ownerNote").textContent = owner ? "" : `Etkinliği silmek, para birimini değiştirmek ve kişi çıkarmak yalnızca ${uname(ev.created_by)} için açık. Kayıtları yalnızca ekleyen kişi ya da ${uname(ev.created_by)} düzenleyebilir.`;
 }
 
 $("#list").addEventListener("click", async (e) => {
@@ -1201,9 +1250,22 @@ $("#list").addEventListener("click", async (e) => {
     try {
       await rpc("hesap_delete_expense", { p_expense: t.dataset.confirm });
       pendingDelete = null; if (editing === t.dataset.confirm) resetForm();
-      toast("Silindi"); await loadEvent(); renderEvent();
+      toast("Silindi · aşağıdaki Silinenler'den geri alabilirsin"); await loadEvent(); renderEvent();
     } catch (err) { toast(err.message); t.disabled = false; }
   }
+  if (t.dataset.recv || t.dataset.unrecv) {
+    t.disabled = true;
+    try {
+      await rpc("hesap_confirm_payment", { p_expense: t.dataset.recv || t.dataset.unrecv, p_ok: !!t.dataset.recv });
+      toast(t.dataset.recv ? "Ödemeyi aldığını onayladın" : "Onay geri alındı"); await loadEvent(); renderEvent();
+    } catch (err) { toast(err.message); t.disabled = false; }
+  }
+});
+$("#deletedList").addEventListener("click", async (e) => {
+  const t = e.target.closest("[data-restore]"); if (!t) return;
+  t.disabled = true;
+  try { await rpc("hesap_restore_expense", { p_expense: t.dataset.restore }); toast("Geri alındı"); await loadEvent(); renderEvent(); }
+  catch (err) { toast(err.message); t.disabled = false; }
 });
 
 // katılımcı ekle/çıkar, ad değiştir, etkinlik sil
